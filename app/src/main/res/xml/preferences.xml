@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <PreferenceCategory
+        android:key="pref_gamepad_settings"
+        android:title="@string/pref_gamepad_title" >
+
+        <ListPreference
+            android:key="@string/pref_gamepad_type_key"
+            android:title="@string/pref_gamepad_type_title"
+            android:summary="%s"
+            android:defaultValue="@string/gamepad_default"
+            android:dialogTitle="@string/pref_gamepad_type_title"
+            android:entries="@array/pref_gamepad_type_entries"
+            android:entryValues="@array/pref_gamepad_type_entries" />
+
+    </PreferenceCategory>
+
+</PreferenceScreen>

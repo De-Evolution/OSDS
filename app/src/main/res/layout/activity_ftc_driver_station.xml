@@ -1,0 +1,205 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                xmlns:tools="http://schemas.android.com/tools"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:keepScreenOn="true"
+                android:paddingBottom="@dimen/activity_vertical_margin"
+                android:paddingLeft="@dimen/activity_horizontal_margin"
+                android:paddingRight="@dimen/activity_horizontal_margin"
+                android:paddingTop="@dimen/activity_vertical_margin"
+                tools:context=".FtcDriverStationActivity">
+
+  <TextView
+    android:id="@+id/textWifiDirectStatus"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:text=""/>
+
+  <TextView
+    android:id="@+id/textPingStatus"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@+id/textWifiDirectStatus"
+    android:text=""/>
+
+  <TextView
+    android:id="@+id/textOpModeQueueLabel"
+    android:layout_width="120dp"
+    android:layout_height="32dp"
+    android:layout_alignParentLeft="true"
+    android:layout_below="@+id/textPingStatus"
+    android:layout_marginTop="32dp"
+    android:gravity="right|center_vertical"
+    android:text="@string/label_queued_op_mode"
+    android:visibility="invisible"/>
+
+  <TextView
+    android:id="@+id/textOpModeQueueName"
+    android:layout_width="fill_parent"
+    android:layout_height="32dp"
+    android:layout_alignBaseline="@+id/textOpModeQueueLabel"
+    android:layout_marginLeft="8dp"
+    android:layout_toRightOf="@+id/textOpModeQueueLabel"
+    android:ellipsize="end"
+    android:gravity="left|center_vertical"
+    android:maxLines="1"
+    android:text=""
+    android:visibility="invisible"/>
+
+  <TextView
+    android:id="@+id/textOpModeLabel"
+    android:layout_width="120dp"
+    android:layout_height="32dp"
+    android:layout_alignParentLeft="true"
+    android:layout_below="@+id/textOpModeQueueLabel"
+    android:gravity="right|center_vertical"
+    android:text="@string/label_current_op_mode"/>
+
+  <TextView
+    android:id="@+id/textOpModeName"
+    android:layout_width="fill_parent"
+    android:layout_height="32dp"
+    android:layout_alignBaseline="@+id/textOpModeLabel"
+    android:layout_marginLeft="8dp"
+    android:layout_toRightOf="@+id/textOpModeLabel"
+    android:ellipsize="end"
+    android:gravity="left|center_vertical"
+    android:maxLines="1"
+    android:text=""
+    android:textAppearance="?android:attr/textAppearanceMedium"/>
+
+  <LinearLayout
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@+id/textOpModeLabel"
+    android:orientation="vertical"
+    android:id="@+id/linearLayout">
+
+    <LinearLayout
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:layout_below="@+id/textOpModeLabel"
+      android:orientation="horizontal">
+
+      <Button
+        android:id="@+id/buttonSelect"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:onClick="onClickButtonSelect"
+        android:text="@string/label_select"/>
+
+      <Button
+        android:id="@+id/buttonStop"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:onClick="onClickButtonStop"
+        android:text="@string/label_stop"/>
+
+    </LinearLayout>
+
+    <LinearLayout
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:layout_below="@+id/textOpModeLabel"
+      android:orientation="horizontal">
+
+      <Button
+        android:id="@+id/buttonStart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:onClick="onClickButtonStart"
+        android:text="@string/label_start"/>
+
+      <Button
+        android:id="@+id/buttonStartTimed"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:enabled="false"
+        android:onClick="onClickButtonStartTimed"
+        android:text="@string/label_start_timed"/>
+
+    </LinearLayout>
+
+  </LinearLayout>
+
+  <RelativeLayout
+    android:id="@+id/bottom_layout"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_below="@+id/linearLayout"
+    android:orientation="horizontal">
+    <TextView
+      android:id="@+id/textTelemetry"
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentLeft="true"
+      android:layout_alignParentStart="true"
+      android:layout_marginTop="16dp"/>
+    <LinearLayout
+      android:layout_width="match_parent"
+      android:layout_height="wrap_content"
+      android:layout_alignParentBottom="true"
+      android:orientation="horizontal">
+      <LinearLayout
+        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <TextView
+          android:id="@+id/user1_label"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginTop="16dp"
+          android:padding="5dp"
+          android:textStyle="bold"
+          android:textAppearance="?android:attr/textAppearanceMedium"
+          android:text="User 1"/>
+
+        <TextView
+          android:id="@+id/user1"
+          android:layout_width="match_parent"
+          android:layout_height="match_parent"
+          android:layout_marginTop="16dp"
+          android:padding="5dp"
+          android:textStyle="bold"
+          android:textSize="16sp"/>
+      </LinearLayout>
+
+      <LinearLayout
+        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+          <TextView
+            android:id="@+id/user2_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="5dp"
+            android:textStyle="bold"
+            android:textAppearance="?android:attr/textAppearanceMedium"
+            android:text="User 2"/>
+
+          <TextView
+            android:id="@+id/user2"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:padding="5dp"
+            android:textStyle="bold"
+            android:textSize="16sp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+  </RelativeLayout>
+
+
+
+</RelativeLayout>
