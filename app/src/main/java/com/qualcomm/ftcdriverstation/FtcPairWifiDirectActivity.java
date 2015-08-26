@@ -108,6 +108,10 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
         }
     }
 
+    public void onClickButtonBack(View view) {
+        finish();
+    }
+
     public void onWifiDirectEvent(Event event) {
         switch (SwitchMap.map[event.ordinal()]) {
             case com.qualcomm.ftccommon.BuildConfig.VERSION_CODE /*1*/:

@@ -72,5 +72,7 @@
 
     <string name="wifi_direct_devices">Wifi Direct Devices:</string>
   <string name="pair_with_controller">Pair With Controller</string>
+  <string name="button_back"><![CDATA[< Back]]></string>
+  <string name="driver_station">Driver Station</string>
 
 </resources>
