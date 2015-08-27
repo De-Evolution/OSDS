@@ -74,5 +74,9 @@
   <string name="pair_with_controller">Pair With Controller</string>
   <string name="button_back"><![CDATA[< Back]]></string>
   <string name="driver_station">Driver Station</string>
+    <string name="wifi_direct_connected_to">✅ Connected to</string>
+    <string name="channel_change_explanation">Note that the channel set on the Robot Controller is the one that will be used for communications. This facility
+        is provided mainly because it regenerates the Wifi Direct config files, so it may be able to fix issues caused by these files being broken.  Note that
+        changing channels requires root access.</string>
 
 </resources>
