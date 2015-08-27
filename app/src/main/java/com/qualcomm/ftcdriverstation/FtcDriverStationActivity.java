@@ -42,8 +42,6 @@ import android.graphics.Color;
 import android.net.wifi.p2p.WifiP2pDevice;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.os.Handler;
-import android.os.Message;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.view.InputEvent;
@@ -368,8 +366,9 @@ public class FtcDriverStationActivity extends Activity
   {
 	  super.onStart();
 
-	wifiDirectStatus("Wifi Direct - Disconnected");
+	  this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
 
+	  wifiDirectStatus("Wifi Direct - Disconnected");
 	  this.wifiDirect.enable();
 	  if (!this.wifiDirect.isConnected()) {
 		  this.wifiDirect.discoverPeers();
@@ -377,12 +376,9 @@ public class FtcDriverStationActivity extends Activity
 	  {
 		  DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
 		  wifiDirectStatus("Error: Connected to wrong device");
-		  //new Handler().post(new WifiDirectReconfigurer(this));
+		  WifiDirectReconfigurer.reconfigureWifi(this);
 		  return;
 	  }
-
-	  this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
-
 
 	  DbgLog.msg("App Started");
   }
@@ -516,7 +512,7 @@ public class FtcDriverStationActivity extends Activity
 			case GROUP_CREATED:
 				DbgLog.error("Wifi Direct - connected as Group Owner, was expecting Peer");
 				wifiDirectStatus("Error: Connected as Group Owner");
-			  //new Handler().post(new WifiDirectReconfigurer(this));
+				//WifiDirectReconfigurer.reconfigureWifi(this);
 		  case CONNECTING:
 				wifiDirectStatus("Connecting");
 				this.wifiDirect.cancelDiscoverPeers();
@@ -524,7 +520,7 @@ public class FtcDriverStationActivity extends Activity
 				this.wifiDirect.cancelDiscoverPeers();
 				wifiDirectStatus("Connected");
 			case CONNECTED_AS_GROUP_OWNER:
-				wifiDirectStatus("Connected to " + this.wifiDirect.getGroupOwnerName());
+				wifiDirectStatus(getString(R.string.wifi_direct_connected_to) + " " + this.wifiDirect.getGroupOwnerName());
 				if (this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress())) {
 					synchronized (this) {
 						if (this.wifiDirect.isConnected() && this.setupNeeded) {
@@ -534,16 +530,23 @@ public class FtcDriverStationActivity extends Activity
 						break;
 					}
 				}
-				DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
-			 	wifiDirectStatus("Error: Connected to wrong device");
-               // new Handler().post(new WifiDirectReconfigurer(this));
+				DbgLog.error("Wifi Direct - connected to \"" + this.wifiDirect.getGroupOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
+				wifiDirectStatus("Error: Connected to wrong device");
+				//WifiDirectReconfigurer.reconfigureWifi(this);
 			case DISCONNECTED:
 				msg = "Disconnected";
 				wifiDirectStatus(msg);
 				DbgLog.msg("Wifi Direct - " + msg);
 				this.wifiDirect.discoverPeers();
 			case ERROR:
-				msg = "Error: " + this.wifiDirect.getFailureReason();
+				if(wifiDirect.getFailureReason().equals("BUSY"))
+				{
+					msg = "Waiting to Connect";
+				}
+				else
+				{
+					msg = "Error: " + this.wifiDirect.getFailureReason();
+				}
 				wifiDirectStatus(msg);
 				DbgLog.msg("Wifi Direct - " + msg);
 			default:

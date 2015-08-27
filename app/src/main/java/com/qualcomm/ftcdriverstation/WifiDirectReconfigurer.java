@@ -7,43 +7,41 @@ import android.net.wifi.WifiManager;
 
 import com.qualcomm.ftccommon.DbgLog;
 
-public class WifiDirectReconfigurer implements Runnable {
+public class WifiDirectReconfigurer {
 
-    Activity app;
-	ProgressDialog dialog;
 
-    class DialogShower implements Runnable {
-
-        public void run() {
-
-	        ProgressDialog dalog = WifiDirectReconfigurer.this.dialog;
-            WifiDirectReconfigurer.this.dialog = new ProgressDialog(WifiDirectReconfigurer.this.app, android.R.style.Theme_Holo_Dialog);
-            dialog.setMessage("Please wait");
-            dialog.setTitle("\"Troubleshooting\" Wifi Direct by resetting Wifi driver");
-            dialog.setIndeterminate(true);
-            dialog.show();
-        }
-    }
-
-    class DialogHider implements Runnable {
-
-        public void run() {
-	        WifiDirectReconfigurer.this.dialog.dismiss();
-        }
-    }
-
-    public WifiDirectReconfigurer(Activity app) {
-	    this.app = app;
-    }
-
-    public void run() {
+    public static void reconfigureWifi(final Activity app) {
         DbgLog.msg("attempting to reconfigure Wifi Direct");
-        app.runOnUiThread(new DialogShower());
-        try {
-            FixWifiDirectSetup.fixWifiDirectSetup((WifiManager) app.getSystemService(Context.WIFI_SERVICE));
-        } catch (InterruptedException e) {
-            DbgLog.msg("Cannot fix wifi setup - interrupted");
-        }
-        app.runOnUiThread(new DialogHider());
+	    final ProgressDialog dialog = new ProgressDialog(app, android.R.style.Theme_Holo_Dialog);
+	    dialog.setMessage("Please wait");
+	    dialog.setTitle("\"Troubleshooting\" Wifi Direct by resetting Wifi driver");
+	    dialog.setIndeterminate(true);
+	    dialog.show();
+
+	    Thread wifiFixThread = new Thread(new Runnable()
+	    {
+		    @Override
+		    public void run()
+		    {
+			    try {
+				    FixWifiDirectSetup.fixWifiDirectSetup((WifiManager) app.getSystemService(Context.WIFI_SERVICE));
+			    } catch (InterruptedException e) {
+				    DbgLog.msg("Cannot fix wifi setup - interrupted");
+			    }
+
+			    app.runOnUiThread(new Runnable(){
+
+				    @Override
+				    public void run()
+				    {
+						dialog.dismiss();
+				    }
+			    });
+		    }
+	    });
+
+	    wifiFixThread.start();
+
+
     }
 }
