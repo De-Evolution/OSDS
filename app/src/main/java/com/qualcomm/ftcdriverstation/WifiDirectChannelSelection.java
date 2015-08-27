@@ -33,6 +33,7 @@ package com.qualcomm.ftcdriverstation;
 import android.content.Context;
 import android.net.wifi.WifiManager;
 
+import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.util.RunShellCommand;
 
@@ -63,7 +64,7 @@ public class WifiDirectChannelSelection {
     this.saveDir = context.getFilesDir().getAbsolutePath() + "/";
     this.wifiManager = wifiManager;
 
-    getCurrentWifiDirectStatusFile = saveDir + "get_current_wifi_direct_staus";
+    getCurrentWifiDirectStatusFile = saveDir + "get_current_wifi_direct_status";
     configWifiDirectFile = saveDir + "config_wifi_direct";
 
     shell.enableLogging(true);
@@ -82,23 +83,37 @@ public class WifiDirectChannelSelection {
 
       shell.runAsRoot(configWifiDirectFile);
 
+      restartWpaSupplicant();
+
       wifiManager.setWifiEnabled(true);
     } finally {
       removeScripts();
     }
   }
 
-  private int getWpaSupplicantPid() throws RuntimeException {
+  private void restartWpaSupplicant() throws RuntimeException {
     // This method has a heavy dependency on the Android version of 'ps'.
-    String psOutput = shell.run("/system/bin/ps");
-    for (String line : psOutput.split("\n")) {
-      if (line.contains("wpa_supplicant")) {
-        String[] tokens = line.split("\\s+");
-        return Integer.parseInt(tokens[1]); // if 'ps' changes format this call will fail
-      }
-    }
 
-    throw new RuntimeException("could not find wpa_supplicant PID");
+    String psOutput = shell.run("/system/bin/ps | grep \'wpa_supplicant\'");
+    String[] lines = psOutput.split("\n");
+	  if(lines.length > 1 || !lines[0].contains("wpa_supplicant"))
+	  {
+		  DbgLog.error("Failed to restart wpa_supplicant! Couldn't parse ps output");
+	  }
+	  else if(lines.length == 0)
+	  {
+		  DbgLog.msg("could not find wpa_supplicant PID, assuming it isn't running");
+	  }
+	  else
+	  {
+		  int pid = -1;
+		  String[] tokens = lines[0].split("\\s+");
+		  pid = Integer.parseInt(tokens[1]); // if 'ps' changes format this call will fail
+		  shell.runAsRoot("kill -HUP " + pid);
+      }
+
+	  return;
+
   }
 
   private void forgetNetworks() {
@@ -195,9 +210,8 @@ public class WifiDirectChannelSelection {
         "cp %s/wpa_supplicant.conf /data/misc/wifi/wpa_supplicant.conf \n" +
         "rm %s/*supplicant* \n" +
         "chown system.wifi /data/misc/wifi/wpa_supplicant.conf \n" +
-        "chown system.wifi /data/misc/wifi/p2p_supplicant.conf \n" +
-        "kill -HUP %d \n",
-        saveDir, saveDir, saveDir, getWpaSupplicantPid());
+        "chown system.wifi /data/misc/wifi/p2p_supplicant.conf \n",
+        saveDir, saveDir, saveDir);
 
     FileWriter fw;
 
