@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.app.Activity;
 import android.content.Context;
@@ -45,6 +45,7 @@ import android.widget.Spinner;
 import android.widget.Toast;
 
 import com.qualcomm.ftccommon.DbgLog;
+import com.qualcomm.osds.R;
 
 import java.io.IOException;
 

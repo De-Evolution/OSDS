@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.animation.ArgbEvaluator;
 import android.animation.ObjectAnimator;
@@ -56,6 +56,7 @@ import android.widget.Toast;
 
 import com.qualcomm.ftccommon.CommandList;
 import com.qualcomm.ftccommon.DbgLog;
+import com.qualcomm.osds.R;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.Gamepad;

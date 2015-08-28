@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.content.Context;
 import android.net.wifi.WifiManager;

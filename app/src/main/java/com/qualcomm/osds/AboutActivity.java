@@ -28,7 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.app.Activity;
 import android.os.Bundle;
@@ -38,6 +38,7 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.qualcomm.osds.R;
 import com.qualcomm.robotcore.util.Version;
 
 /**

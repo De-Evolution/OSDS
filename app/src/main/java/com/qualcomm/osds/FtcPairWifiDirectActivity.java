@@ -1,4 +1,4 @@
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.app.Activity;
 import android.content.Context;
@@ -13,6 +13,7 @@ import android.view.View.OnClickListener;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import com.qualcomm.ftccommon.DbgLog;
+import com.qualcomm.osds.R;
 import com.qualcomm.robotcore.BuildConfig;
 import com.qualcomm.robotcore.wifi.WifiDirectAssistant;
 import com.qualcomm.robotcore.wifi.WifiDirectAssistant.Event;
@@ -29,7 +30,7 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
     private Handler wifiDirectHandler;
     private WifiDirectRunnable wifiDirectRunnable;
 
-    /* renamed from: com.qualcomm.ftcdriverstation.FtcPairWifiDirectActivity.1 */
+    /* renamed from: FtcPairWifiDirectActivity.1 */
     static /* synthetic */ class SwitchMap
     {
         static final /* synthetic */ int[] map;

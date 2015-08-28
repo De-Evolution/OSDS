@@ -1,4 +1,4 @@
-package com.qualcomm.ftcdriverstation;
+package com.qualcomm.osds;
 
 import android.net.wifi.WifiManager;
 
