@@ -1,0 +1,8 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/action_switch_to_lan"
+        android:showAsAction="never"
+        android:title="@string/switch_to_lan_menu_item"/>
+
+</menu>

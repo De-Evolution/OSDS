@@ -13,8 +13,8 @@ public class WifiDirectReconfigurer {
     public static void reconfigureWifi(final Activity app) {
         DbgLog.msg("attempting to reconfigure Wifi Direct");
 	    final ProgressDialog dialog = new ProgressDialog(app, android.R.style.Theme_Holo_Dialog);
-	    dialog.setMessage("Please wait");
-	    dialog.setTitle("\"Troubleshooting\" Wifi Direct by resetting Wifi driver");
+	    dialog.setTitle("Please wait");
+	    dialog.setMessage("\"Troubleshooting\" Wifi Direct by resetting Wifi driver");
 	    dialog.setIndeterminate(true);
 	    dialog.show();
 

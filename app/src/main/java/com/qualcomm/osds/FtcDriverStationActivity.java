@@ -44,6 +44,7 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -93,36 +94,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
-public class FtcDriverStationActivity extends Activity
-	implements WifiDirectAssistantCallback, SharedPreferences.OnSharedPreferenceChangeListener, OpModeSelectionDialogFragment.OpModeSelectionDialogListener {
+public abstract class FtcDriverStationActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener, OpModeSelectionDialogFragment.OpModeSelectionDialogListener {
 
   public static final double ASSUME_DISCONNECT_TIMER = 2.0; // in seconds
 
-  private class SetupRunnable implements Runnable {
-	@Override
-	public void run() {
-	    try {
-		    if (FtcDriverStationActivity.this.socket != null) {
-			    FtcDriverStationActivity.this.socket.close();
-		    }
-		    FtcDriverStationActivity.this.socket = new RobocolDatagramSocket();
-		    FtcDriverStationActivity.this.socket.listen(FtcDriverStationActivity.this.wifiDirect.getGroupOwnerAddress());
-		    FtcDriverStationActivity.this.socket.connect(FtcDriverStationActivity.this.wifiDirect.getGroupOwnerAddress());
-	    } catch (SocketException e) {
-		    DbgLog.error("Failed to open socket: " + e.toString());
-	    }
-	    if (FtcDriverStationActivity.this.peerDiscoveryManager != null) {
-		    FtcDriverStationActivity.this.peerDiscoveryManager.stop();
-	    }
-	    FtcDriverStationActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationActivity.this.socket);
-	    FtcDriverStationActivity.this.peerDiscoveryManager.start(FtcDriverStationActivity.this.wifiDirect.getGroupOwnerAddress());
-	    FtcDriverStationActivity.this.recvLoopService = Executors.newSingleThreadExecutor();
-	    FtcDriverStationActivity.this.recvLoopService.execute(new RecvLoopRunnable());
-	    DbgLog.msg("Setup complete");
-	}
-  }
 
-  private class SendLoopRunnable implements Runnable {
+
+  protected class SendLoopRunnable implements Runnable {
 	private static final long GAMEPAD_UPDATE_THRESHOLD = 1000; // in milliseconds
 
 	@Override
@@ -193,7 +171,7 @@ public class FtcDriverStationActivity extends Activity
 	}
   }
 
-  private class RecvLoopRunnable implements Runnable {
+  protected class RecvLoopRunnable implements Runnable {
 	@Override
 	public void run() {
 	  while (true) {
@@ -288,7 +266,6 @@ public class FtcDriverStationActivity extends Activity
   protected ExecutorService recvLoopService;
 
   protected InetAddress remoteAddr;
-  protected WifiDirectAssistant wifiDirect;
   protected RobocolDatagramSocket socket;
 
   protected String queuedOpMode = "";
@@ -316,9 +293,8 @@ public class FtcDriverStationActivity extends Activity
   protected Button buttonStartTimed;
   protected Button buttonSelect;
   protected Button buttonStop;
-	protected String groupOwnerMac;
-	protected PeerDiscoveryManager peerDiscoveryManager;
 
+	protected PeerDiscoveryManager peerDiscoveryManager;
 
 	protected Context context;
   protected SharedPreferences preferences;
@@ -330,9 +306,8 @@ public class FtcDriverStationActivity extends Activity
 
 	context = this;
 
-	textWifiDirectStatus = (TextView) findViewById(R.id.textWifiDirectStatus);
 	textPingStatus = (TextView) findViewById(R.id.textPingStatus);
-
+	textWifiDirectStatus = (TextView) findViewById(R.id.textWifiDirectStatus);
 	textOpModeQueuedLabel = (TextView) findViewById(R.id.textOpModeQueueLabel);
 	textOpModeQueuedName = (TextView) findViewById(R.id.textOpModeQueueName);
 	textOpModeLabel = (TextView) findViewById(R.id.textOpModeLabel);
@@ -350,9 +325,6 @@ public class FtcDriverStationActivity extends Activity
 
 	RobotLog.writeLogcatToDisk(this, 1024);
 
-	wifiDirect = WifiDirectAssistant.getWifiDirectAssistant(getApplicationContext());
-	wifiDirect.setCallback(this);
-
 	  String notSetValue =  getString(R.string.pref_driver_station_mac_default);
 
 	  if(PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac),notSetValue).equals(notSetValue))
@@ -367,20 +339,6 @@ public class FtcDriverStationActivity extends Activity
   {
 	  super.onStart();
 
-	  this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
-
-	  wifiDirectStatus("Wifi Direct - Disconnected");
-	  this.wifiDirect.enable();
-	  if (!this.wifiDirect.isConnected()) {
-		  this.wifiDirect.discoverPeers();
-	  } else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress()))
-	  {
-		  DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
-		  wifiDirectStatus("Error: Connected to wrong device");
-		  WifiDirectReconfigurer.reconfigureWifi(this);
-		  return;
-	  }
-
 	  DbgLog.msg("App Started");
   }
 
@@ -389,14 +347,6 @@ public class FtcDriverStationActivity extends Activity
 
 	  super.onResume();
 	  this.setupNeeded = true;
-	  //this.enableNetworkTrafficLogging = this.preferences.getBoolean(getString(C0079R.string.pref_log_network_traffic_key), false);
-	  this.wifiDirect.setCallback(this);
-	  if (this.wifiDirect.isConnected()) {
-		  RobotLog.i("Spoofing a wifi direct event...");
-		  onWifiDirectEvent(WifiDirectAssistant.Event.CONNECTION_INFO_AVAILABLE);
-	  }super.onResume();
-
-	  //new Handler().postDelayed(new WifiDirectReconfigurer(this), 100);
   }
 
   @Override
@@ -407,9 +357,6 @@ public class FtcDriverStationActivity extends Activity
   @Override
   protected void onStop() {
 	super.onStop();
-
-	wifiDirect.disable();
-
 	// close the old event loops
 	shutdown();
 
@@ -417,11 +364,13 @@ public class FtcDriverStationActivity extends Activity
   }
 
   public void showToast(final String msg, final int duration) {
-	runOnUiThread(new Runnable() {
-	  @Override
-	  public void run() {
-		Toast.makeText(context, msg, duration).show();
-	  }
+	runOnUiThread(new Runnable()
+	{
+		@Override
+		public void run()
+		{
+			Toast.makeText(context, msg, duration).show();
+		}
 	});
 	DbgLog.msg(msg);
   }
@@ -482,7 +431,7 @@ public class FtcDriverStationActivity extends Activity
   }
 
   @Override
-  public boolean dispatchKeyEvent(KeyEvent event) {
+  public boolean dispatchKeyEvent(@NonNull KeyEvent event) {
 	if (Gamepad.isGamepadDevice(event.getDeviceId())) {
 	  handleGamepadEvent(event);
 	  return true;
@@ -490,69 +439,6 @@ public class FtcDriverStationActivity extends Activity
 
 	return super.dispatchKeyEvent(event);
   }
-
-	public void onWifiDirectEvent(WifiDirectAssistant.Event event) {
-		String msg;
-		switch (event)
-		{
-		  case PEERS_AVAILABLE:
-				if (this.wifiDirect.getConnectStatus() != WifiDirectAssistant.ConnectStatus.CONNECTED && this.wifiDirect.getConnectStatus() != WifiDirectAssistant.ConnectStatus.CONNECTING) {
-					if (this.groupOwnerMac.equals(getString(R.string.pref_driver_station_mac_default))) {
-						wifiDirectStatus("Not Paired");
-					} else {
-						wifiDirectStatus("Searching");
-					}
-					for (WifiP2pDevice peer : this.wifiDirect.getPeers()) {
-						if (peer.deviceAddress.equalsIgnoreCase(this.groupOwnerMac))
-						{
-							this.wifiDirect.connect(peer);
-							return;
-						}
-					}
-				}
-			case GROUP_CREATED:
-				DbgLog.error("Wifi Direct - connected as Group Owner, was expecting Peer");
-				wifiDirectStatus("Error: Connected as Group Owner");
-				//WifiDirectReconfigurer.reconfigureWifi(this);
-		  case CONNECTING:
-				wifiDirectStatus("Connecting");
-				this.wifiDirect.cancelDiscoverPeers();
-			case CONNECTED_AS_PEER:
-				this.wifiDirect.cancelDiscoverPeers();
-				wifiDirectStatus("Connected");
-			case CONNECTED_AS_GROUP_OWNER:
-				wifiDirectStatus(getString(R.string.wifi_direct_connected_to) + " " + this.wifiDirect.getGroupOwnerName());
-				if (this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress())) {
-					synchronized (this) {
-						if (this.wifiDirect.isConnected() && this.setupNeeded) {
-							this.setupNeeded = false;
-							new Thread(new SetupRunnable()).start();
-						}
-						break;
-					}
-				}
-				DbgLog.error("Wifi Direct - connected to \"" + this.wifiDirect.getGroupOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
-				wifiDirectStatus("Error: Connected to wrong device");
-				//WifiDirectReconfigurer.reconfigureWifi(this);
-			case DISCONNECTED:
-				msg = "Disconnected";
-				wifiDirectStatus(msg);
-				DbgLog.msg("Wifi Direct - " + msg);
-				this.wifiDirect.discoverPeers();
-			case ERROR:
-				if(wifiDirect.getFailureReason().equals("BUSY"))
-				{
-					msg = "Waiting to Connect";
-				}
-				else
-				{
-					msg = "Error: " + this.wifiDirect.getFailureReason();
-				}
-				wifiDirectStatus(msg);
-				DbgLog.msg("Wifi Direct - " + msg);
-			default:
-		}
-	}
 
   public void onClickButtonStart(View view) {
 	handleOpModeStart(false);
@@ -590,10 +476,10 @@ public class FtcDriverStationActivity extends Activity
   protected void shutdown() {
 	if (recvLoopService != null) recvLoopService.shutdownNow();
 	if (sendLoopFuture != null && !sendLoopFuture.isDone()) sendLoopFuture.cancel(true);
-
-  if (this.peerDiscoveryManager != null) {
-	  this.peerDiscoveryManager.stop();
-  }
+	  if (this.peerDiscoveryManager != null)
+	  {
+		  this.peerDiscoveryManager.stop();
+	  }
 
 	// close the socket as well
 	if (socket != null) socket.close();
@@ -608,28 +494,6 @@ public class FtcDriverStationActivity extends Activity
 	pingStatus("");
   }
 
-  protected void peerDiscoveryEvent(RobocolDatagram packet) {
-	if (packet.getAddress().equals(remoteAddr))
-	  return; // no action needed
-
-	// update remoteAddr with latest address
-	remoteAddr = packet.getAddress();
-	DbgLog.msg("new remote peer discovered: " + remoteAddr.getHostAddress());
-
-	try {
-	  socket.connect(remoteAddr);
-	} catch (SocketException e) {
-	  DbgLog.error("Unable to connect to peer:" + e.toString());
-	}
-
-	// start send loop, if needed
-	if (sendLoopFuture == null || sendLoopFuture.isDone()) {
-	  sendLoopFuture =
-		  sendLoopService.scheduleAtFixedRate(new SendLoopRunnable(), 0, 40, TimeUnit.MILLISECONDS);
-	}
-
-	assumeClientConnect();
-  }
 
   protected void heartbeatEvent(RobocolDatagram packet) {
 	try {
@@ -678,7 +542,35 @@ public class FtcDriverStationActivity extends Activity
 	}
   }
 
-  protected void telemetryEvent(RobocolDatagram packet) {
+
+	protected void peerDiscoveryEvent(RobocolDatagram packet)
+	{
+		if (packet.getAddress().equals(remoteAddr))
+			return; // no action needed
+
+		// update remoteAddr with latest address
+		remoteAddr = packet.getAddress();
+		DbgLog.msg("new remote peer discovered: " + remoteAddr.getHostAddress());
+
+		try
+		{
+			socket.connect(remoteAddr);
+		}
+		catch (SocketException e)
+		{
+			DbgLog.error("Unable to connect to peer:" + e.toString());
+		}
+
+		// start send loop, if needed
+		if (sendLoopFuture == null || sendLoopFuture.isDone())
+		{
+			sendLoopFuture = sendLoopService.scheduleAtFixedRate(new SendLoopRunnable(), 0, 40, TimeUnit.MILLISECONDS);
+		}
+
+		assumeClientConnect();
+	}
+
+	protected void telemetryEvent(RobocolDatagram packet) {
 	String telemetryString = "";
 	Telemetry telemetry = null;
 	SortedSet<String> keys;
@@ -869,7 +761,7 @@ public class FtcDriverStationActivity extends Activity
 
   // needs to be synchronized since multiple gamepad events can come in at the same time
   protected synchronized void handleGamepadEvent(KeyEvent event) {
-	if (gamepads.containsKey(event.getDeviceId()) == false) {
+	if (!gamepads.containsKey(event.getDeviceId())) {
 	  gamepads.put(event.getDeviceId(), new Gamepad());
 	}
 
@@ -882,7 +774,7 @@ public class FtcDriverStationActivity extends Activity
 	  int user = -1;
 	  if (gamepad.a) {
 		user = 1;
-	  } else if (gamepad.b) {
+	  } else {
 		user = 2;
 	  }
 	  assignNewGamepad(user, event.getDeviceId());

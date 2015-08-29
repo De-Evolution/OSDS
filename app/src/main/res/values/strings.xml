@@ -1,40 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
-  <!-- Gamepads -->
-  <string name="gamepad_logitech_f310">Logitech F310 Gamepad</string>
-  <string name="gamepad_microsoft_xbox_360">Microsoft XBox 360 Gamepad</string>
-  <string name="gamepad_android_standard">Standard Android Gamepad</string>
-  <string name="gamepad_default">@string/gamepad_android_standard</string>
+    <!-- Gamepads -->
+    <string name="gamepad_logitech_f310">Logitech F310 Gamepad</string>
+    <string name="gamepad_microsoft_xbox_360">Microsoft XBox 360 Gamepad</string>
+    <string name="gamepad_android_standard">Standard Android Gamepad</string>
+    <string name="gamepad_default">@string/gamepad_android_standard</string>
 
-  <!-- App Package Strings -->
-  <string name="app_name">OSDS</string>
-  <string name="about_activity">About</string>
-  <string name="title_activity_settings">FTC Driver Station Settings</string>
+    <!-- App Package Strings -->
+    <string name="app_name">OSDS</string>
+    <string name="about_activity">About</string>
+    <string name="title_activity_settings">FTC Driver Station Settings</string>
 
-  <!--  Actions -->
-  <string name="action_settings">Settings</string>
-  <string name="action_wifi_channel_selector">Wifi Channel Selection</string>
-  <string name="action_configuration">Configure Robot</string>
-  <string name="action_restart_robot">Restart Robot</string>
+    <!--  Actions -->
+    <string name="action_settings">Settings</string>
+    <string name="action_wifi_channel_selector">Wifi Channel Selection</string>
+    <string name="action_configuration">Configure Robot</string>
+    <string name="action_restart_robot">Restart Robot</string>
 
 
-  <!-- Preferences -->
-  <string name="pref_gamepad_title">Gamepad</string>
+    <!-- Preferences -->
+    <string name="pref_gamepad_title">Gamepad</string>
 
-  <string name="pref_gamepad_type_key">pref_gamepad_type</string>
-  <string name="pref_gamepad_type_title">Gamepad type</string>
-  <string-array name="pref_gamepad_type_entries">
+    <string name="pref_gamepad_type_key">pref_gamepad_type</string>
+    <string name="pref_gamepad_type_title">Gamepad type</string>
+    <string-array name="pref_gamepad_type_entries">
     <item>@string/gamepad_logitech_f310</item>
     <item>@string/gamepad_microsoft_xbox_360</item>
     <item>@string/gamepad_android_standard</item>
-  </string-array>
+    </string-array>
 
-  <string name="pref_driver_station_mac">pref_driver_station_mac</string>
-  <string name="pref_driver_station_mac_default">NONE</string>
+    <string name="pref_driver_station_mac">pref_driver_station_mac</string>
+    <string name="pref_driver_station_mac_default">NONE</string>
 
-  <!-- Wifi Channel Selector -->
-  <string-array name="wifi_direct_channels">
+    <!-- Wifi Channel Selector -->
+    <string-array name="wifi_direct_channels">
     <item>SELECT A CHANNEL</item>
     <item>Class 81 Channel 1</item>
     <item>Class 81 Channel 6</item>
@@ -49,21 +49,21 @@
     <item>Class 124 Channel 153</item>
     <item>Class 124 Channel 157</item>
     <item>Class 124 Channel 161</item>
-  </string-array>
+    </string-array>
 
-  <string name="configure_settings">Configure WiFi Direct</string>
-  <string name="launch_wifi_settings">Launch WiFi Settings</string>
-  <string name="restore_settings">Restore Saved WiFi Settings</string>
+    <string name="configure_settings">Configure WiFi Direct</string>
+    <string name="launch_wifi_settings">Launch WiFi Settings</string>
+    <string name="restore_settings">Restore Saved WiFi Settings</string>
 
-  <string name="label_current_op_mode">current op mode:</string>
-  <string name="label_queued_op_mode">queued:</string>
-  <string name="label_loading_op_mode">Loading...</string>
-  <string name="label_start">Start</string>
-  <string name="label_start_timed">Start w/ Timer</string>
-  <string name="label_select">Select</string>
-  <string name="label_stop">Stop</string>
+    <string name="label_current_op_mode">current op mode:</string>
+    <string name="label_queued_op_mode">queued:</string>
+    <string name="label_loading_op_mode">Loading...</string>
+    <string name="label_start">Start</string>
+    <string name="label_start_timed">Start w/ Timer</string>
+    <string name="label_select">Select</string>
+    <string name="label_stop">Stop</string>
 
-  <string name="dialog_title_select_op_mode">Select Op Mode</string>
+    <string name="dialog_title_select_op_mode">Select Op Mode</string>
     <string name="wifi_direct_update_settings">Please wait while we update the Wifi Direct settings on this device.</string>
 
     <string name="pair_instructions">Make sure that the FTC Robot Controller app is open on your other device, and that both devices have wifi enabled</string>
@@ -71,12 +71,16 @@
     <string name="pair_wifi_direct_menu_item">Pair With Robot Controller</string>
 
     <string name="wifi_direct_devices">Wifi Direct Devices:</string>
-  <string name="pair_with_controller">Pair With Controller</string>
-  <string name="button_back"><![CDATA[< Back]]></string>
-  <string name="driver_station">Driver Station</string>
-    <string name="wifi_direct_connected_to">✅ Connected to</string>
+    <string name="pair_with_controller">Pair With Controller</string>
+    <string name="button_back"><![CDATA[< Back]]></string>
+    <string name="wd_driver_station">Wifi Direct Driver Station</string>
+    <string name="lan_driver_station">LAN Driver Station</string>
+    <string name="check_connected_to">✅ Connected to</string>
     <string name="channel_change_explanation">Note that the channel set on the Robot Controller is the one that will be used for communications. This facility
         is provided mainly because it regenerates the Wifi Direct config files, so it may be able to fix issues caused by these files being broken.  Note that
         changing channels requires root access.</string>
+    <string name="set_ip_menu_item">Set IP Address</string>
+    <string name="switch_to_wifi_direct_menu_item">Switch to Wifi Direct</string>
+    <string name="switch_to_lan_menu_item">Switch to LAN</string>
 
 </resources>
