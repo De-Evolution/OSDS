@@ -9,7 +9,8 @@ The GUI source code in this was written by Qualcomm and modified by me.  It is s
 #### Why you WOULD use this driver station
 - It supports a larger range of devices and screen sizes than the default app (though it won't magically fix Wifi Direct on devices where it is broken or not present)
 - It gives you quite a bit more screen real estate for Telemetry, depending on the size of your device's screen
-- It allows you to customize your team's DS.  You can do simple color and icon theming, or something as complicated as parsing the Telemetry feed and creating a GUI for your robot
+- It allows you to customize your team's DS.  You can do simple color and icon theming, or something as complicated as parsing the Telemetry feed and creating a GUI for your robot.
+- It supports LAN mode, which lets you connect to the robot by joining the same wifi network and typing in the IP address, instead of futzing around with Wifi Direct
 - It features a much less jarring and aggressive "Configuring Wifi, please wait..." dialog, which hopefully won't get stuck in a loop.
 - It includes the old, device-agnostic (though root-requiring) Wifi channel changer.  Changing the driver station channel doesn't have any effect, but I suppose you could install OSDS on our robot controller phone and use it there.
 
