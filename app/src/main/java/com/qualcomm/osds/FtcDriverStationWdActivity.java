@@ -59,13 +59,21 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
   protected WifiDirectAssistant wifiDirect;
 	protected String groupOwnerMac;
 
-  @Override
+	protected boolean setupNeeded = true;
+
+	@Override
   protected void onCreate(Bundle savedInstanceState) {
-	super.onCreate(savedInstanceState);
+		super.onCreate(savedInstanceState);
 
-	wifiDirect = WifiDirectAssistant.getWifiDirectAssistant(getApplicationContext());
-	wifiDirect.setCallback(this);
+		wifiDirect = WifiDirectAssistant.getWifiDirectAssistant(getApplicationContext());
+		wifiDirect.setCallback(this);
 
+	  String notSetValue =  getString(R.string.pref_driver_station_mac_default);
+
+	  if(PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac),notSetValue).equals(notSetValue))
+	  {
+		  startActivity(new Intent(this, FtcPairWifiDirectActivity.class));
+	  }
   }
 
   @Override
@@ -89,12 +97,20 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 	  }
   }
 
-  @Override
-  protected void onResume() {
+	@Override
+	protected void shutdown()
+	{
+		super.shutdown();
+		// reset need for setup
+		setupNeeded = true;
+	}
 
-	  super.onResume();
+	@Override
+	protected void onResume() {
 
-  }
+		super.onResume();
+		this.setupNeeded = true;
+	}
 
   @Override
   protected void onPause() {
@@ -104,7 +120,6 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
   @Override
   protected void onStop() {
 	super.onStop();
-
 	wifiDirect.disable();
   }
 

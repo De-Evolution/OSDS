@@ -30,8 +30,13 @@
 
 package com.qualcomm.osds;
 
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
+import android.util.Patterns;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -47,24 +52,40 @@ import java.util.concurrent.Executors;
 /**
  * LAN version of the Driver Station which just connects to a specified IP address
  */
-public class FtcDriverStationLanActivity extends FtcDriverStationActivity
+public class FtcDriverStationLanActivity extends FtcDriverStationActivity implements DialogInterface.OnDismissListener
 {
 	InetAddress robotControllerAddress;
+
+	final static int IP_DIALOG_ID = 1;
+
+
+	@Override
+	protected Dialog onCreateDialog(int id)
+	{
+		if(id == IP_DIALOG_ID)
+		{
+			IPAddressDialog ipDialog
+					= new IPAddressDialog(this, preferences);
+			ipDialog.setOnDismissListener(this);
+			return ipDialog;
+		}
+		return super.onCreateDialog(id);
+	}
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
 
+		String ipString = preferences.getString(IPAddressDialog.IP_ADDRESS_PREFERENCE, "");
 		try
 		{
-			robotControllerAddress = InetAddress.getByAddress(new byte[] {(byte)192, (byte)168, 1, 113});
+			robotControllerAddress = InetAddress.getByName(ipString);
 		}
 		catch (UnknownHostException e)
 		{
-			e.printStackTrace();
+			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preferences is not valid!");
 		}
-
 		displayConnectionNotice();
 	}
 
@@ -77,7 +98,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.action_set_ip:
-				startActivity(new Intent(getBaseContext(), AboutActivity.class));
+				showDialog(IP_DIALOG_ID);
 				return true;
 			case R.id.action_switch_to_wd:
 				startActivity(new Intent(getBaseContext(), FtcDriverStationWdActivity.class));
@@ -115,6 +136,30 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity
 		getMenuInflater().inflate(R.menu.ftc_driver_station, menu);
 		getMenuInflater().inflate(R.menu.lan_driver_station, menu);
 		return true;
+	}
+
+	@Override
+	public void onDismiss(DialogInterface dialog)
+	{
+		String newIP = preferences.getString(IPAddressDialog.IP_ADDRESS_PREFERENCE, "");
+		if(Patterns.IP_ADDRESS.matcher(newIP).matches())
+		{
+			try
+			{
+				robotControllerAddress = InetAddress.getByName(newIP);
+			}
+			catch (UnknownHostException e)
+			{
+				e.printStackTrace();
+			}
+			assumeClientDisconnect();
+			shutdown();
+			new Thread(new SetupRunnable()).start();
+		}
+		else
+		{
+			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preferences is not valid!");
+		}
 	}
 	
 	protected class SetupRunnable implements Runnable {

@@ -97,9 +97,6 @@ import java.util.concurrent.TimeUnit;
 public abstract class FtcDriverStationActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener, OpModeSelectionDialogFragment.OpModeSelectionDialogListener {
 
   public static final double ASSUME_DISCONNECT_TIMER = 2.0; // in seconds
-
-
-
   protected class SendLoopRunnable implements Runnable {
 	private static final long GAMEPAD_UPDATE_THRESHOLD = 1000; // in milliseconds
 
@@ -279,8 +276,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
   protected Set<Command> pendingCommands = Collections.newSetFromMap(new ConcurrentHashMap<Command, Boolean>());
 
-  protected boolean setupNeeded = true;
-
   protected TextView textWifiDirectStatus;
   protected TextView textPingStatus;
   protected TextView textOpModeQueuedLabel;
@@ -321,20 +316,14 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
 	preferences = PreferenceManager.getDefaultSharedPreferences(this);
-	preferences.registerOnSharedPreferenceChangeListener(this);
 
 	RobotLog.writeLogcatToDisk(this, 1024);
 
-	  String notSetValue =  getString(R.string.pref_driver_station_mac_default);
-
-	  if(PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac),notSetValue).equals(notSetValue))
-	  {
-		 startActivity(new Intent(this, FtcPairWifiDirectActivity.class));
-	  }
+	  preferences.registerOnSharedPreferenceChangeListener(this);
 
   }
 
-  @Override
+	@Override
   protected void onStart()
   {
 	  super.onStart();
@@ -342,12 +331,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	  DbgLog.msg("App Started");
   }
 
-  @Override
-  protected void onResume() {
 
-	  super.onResume();
-	  this.setupNeeded = true;
-  }
 
   @Override
   protected void onPause() {
@@ -358,7 +342,9 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   protected void onStop() {
 	super.onStop();
 	// close the old event loops
-	shutdown();
+	  shutdown();
+
+	  assumeClientDisconnect();
 
 	DbgLog.msg("App Stopped");
   }
@@ -377,11 +363,11 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
   @Override
   public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-	// TODO: enable different pref for each user
-	if (key.equals(context.getString(R.string.pref_gamepad_type_key))) {
-	  gamepads.clear();
-	  userToGamepadMap.clear();
-	}
+		// TODO: enable different pref for each user
+		if (key.equals(context.getString(R.string.pref_gamepad_type_key))) {
+		  gamepads.clear();
+		  userToGamepadMap.clear();
+		}
   }
 
   @Override
@@ -486,9 +472,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	// reset the client
 	remoteAddr = null;
-
-	// reset need for setup
-	setupNeeded = true;
 
 	// reset quick status
 	pingStatus("");
@@ -599,35 +582,35 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   protected void assumeClientConnect() {
-	DbgLog.msg("Assuming client connected");
-	clientConnected = true;
+		DbgLog.msg("Assuming client connected");
+		clientConnected = true;
 
-	// request a list of available op modes
-	pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
+		// request a list of available op modes
+		pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
   }
 
   protected void assumeClientDisconnect() {
-	DbgLog.msg("Assuming client disconnected");
-	clientConnected = false;
+		DbgLog.msg("Assuming client disconnected");
+		clientConnected = false;
 
-	opModeUseTimer = false;
-	opModeCountDown.stop();
-	queuedOpMode = "";
-	opModes.clear();
+		opModeUseTimer = false;
+		opModeCountDown.stop();
+		queuedOpMode = "";
+		opModes.clear();
 
-	pingStatus("");
-	pendingCommands.clear();
-	remoteAddr = null;
+		pingStatus("");
+		pendingCommands.clear();
+		remoteAddr = null;
 
-	setTextView(textOpModeQueuedName, "");
-	setTextView(textOpModeName, "");
-	setTextView(buttonStop, getString(R.string.label_stop));
-	setTextView(textTelemetry, "");
+		setTextView(textOpModeQueuedName, "");
+		setTextView(textOpModeName, "");
+		setTextView(buttonStop, getString(R.string.label_stop));
+		setTextView(textTelemetry, "");
 
-	setEnabled(buttonSelect, false);
-	setEnabled(buttonStop, false);
-	setEnabled(buttonStart, false);
-	setEnabled(buttonStartTimed, false);
+		setEnabled(buttonSelect, false);
+		setEnabled(buttonStop, false);
+		setEnabled(buttonStart, false);
+		setEnabled(buttonStartTimed, false);
   }
 
   protected void handleOpModeQueued(String queuedOpMode) {

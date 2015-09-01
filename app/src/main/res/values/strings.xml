@@ -82,5 +82,11 @@
     <string name="set_ip_menu_item">Set IP Address</string>
     <string name="switch_to_wifi_direct_menu_item">Switch to Wifi Direct</string>
     <string name="switch_to_lan_menu_item">Switch to LAN</string>
+    <string name="not_valid">❌ Not Valid</string>
+    <string name="is_valid">✅ Valid</string>
+    <string name="not_pingable">❌ Not Pingable</string>
+    <string name="checking_pingable">⌛ Checking…</string>
+    <string name="is_pingable">✅ Pingable</string>
+    <string name="enter_ip_address">Enter DS IP address</string>
 
 </resources>
