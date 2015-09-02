@@ -61,19 +61,24 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 
 	protected boolean setupNeeded = true;
 
+	public final static String PREF_USE_LAN_DS = "use_lan_ds";
+
+	final static int AUTO_LAN_DS_REQUEST_CODE = 7;
+
 	@Override
   protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
+
 		wifiDirect = WifiDirectAssistant.getWifiDirectAssistant(getApplicationContext());
 		wifiDirect.setCallback(this);
 
-	  String notSetValue =  getString(R.string.pref_driver_station_mac_default);
+		String notSetValue = getString(R.string.pref_driver_station_mac_default);
 
-	  if(PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac),notSetValue).equals(notSetValue))
-	  {
-		  startActivity(new Intent(this, FtcPairWifiDirectActivity.class));
-	  }
+		if (PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), notSetValue).equals(notSetValue))
+		{
+			startActivity(new Intent(this, FtcPairWifiDirectActivity.class));
+		}
   }
 
   @Override
@@ -83,17 +88,24 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 
 	  this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
 
-	  wifiDirectStatus("Wifi Direct - Disconnected");
-	  this.wifiDirect.enable();
-	  if (!this.wifiDirect.isConnected())
+	  if(preferences.getBoolean(PREF_USE_LAN_DS, false))
 	  {
-		  this.wifiDirect.discoverPeers();
+		  //automatically open the LAN DS
+		  startActivityForResult(new Intent(this, FtcDriverStationLanActivity.class), AUTO_LAN_DS_REQUEST_CODE);
 	  }
-	  else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress()))
+	  else
 	  {
-		  DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
-		  wifiDirectStatus("Error: Connected to wrong device");
-		  WifiDirectReconfigurer.reconfigureWifi(this);
+		  wifiDirectStatus("Wifi Direct - Disconnected");
+		  this.wifiDirect.enable();
+		  if (!this.wifiDirect.isConnected())
+		  {
+			  this.wifiDirect.discoverPeers();
+		  } else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress()))
+		  {
+			  DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
+			  wifiDirectStatus("Error: Connected to wrong device");
+			  WifiDirectReconfigurer.reconfigureWifi(this);
+		  }
 	  }
   }
 
@@ -135,11 +147,23 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 	public boolean onOptionsItemSelected(MenuItem item) {
 		switch (item.getItemId()) {
 			case R.id.action_switch_to_lan:
+				//set the default to LAN
+				preferences.edit().putBoolean(PREF_USE_LAN_DS, true).apply();
 				startActivity(new Intent(getBaseContext(), FtcDriverStationLanActivity.class));
 				return true;
 			//from common menu
 			default:
 				return super.onOptionsItemSelected(item);
+		}
+	}
+
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data)
+	{
+		//if the LAN DS was auto-opened and then closed by the user, close the whole app.
+		if(requestCode == AUTO_LAN_DS_REQUEST_CODE)
+		{
+			finish();
 		}
 	}
 

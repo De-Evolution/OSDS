@@ -58,7 +58,6 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 
 	final static int IP_DIALOG_ID = 1;
 
-
 	@Override
 	protected Dialog onCreateDialog(int id)
 	{
@@ -101,6 +100,8 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 				showDialog(IP_DIALOG_ID);
 				return true;
 			case R.id.action_switch_to_wd:
+				//set the default to WD DS
+				preferences.edit().putBoolean(FtcDriverStationWdActivity.PREF_USE_LAN_DS, false).apply();
 				startActivity(new Intent(getBaseContext(), FtcDriverStationWdActivity.class));
 				return true;
 			//from common menu
