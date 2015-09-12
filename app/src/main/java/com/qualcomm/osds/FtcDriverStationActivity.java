@@ -37,9 +37,9 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
-import android.net.wifi.p2p.WifiP2pDevice;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.SystemClock;
@@ -51,13 +51,15 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.animation.AccelerateInterpolator;
+import android.view.animation.Animation;
+import android.view.animation.ScaleAnimation;
 import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.qualcomm.ftccommon.CommandList;
 import com.qualcomm.ftccommon.DbgLog;
-import com.qualcomm.osds.R;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.Gamepad;
@@ -73,8 +75,6 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.util.RollingAverage;
 import com.qualcomm.robotcore.util.Util;
-import com.qualcomm.robotcore.wifi.WifiDirectAssistant;
-import com.qualcomm.robotcore.wifi.WifiDirectAssistant.WifiDirectAssistantCallback;
 
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -284,40 +284,55 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   protected TextView textOpModeName;
   protected TextView textTelemetry;
 
-  protected Button buttonStart;
+	//gamepad info TextViews
+	protected TextView textuser1;
+	protected TextView textuser2;
+
+	protected Button buttonStart;
   protected Button buttonStartTimed;
   protected Button buttonSelect;
   protected Button buttonStop;
 
 	protected PeerDiscoveryManager peerDiscoveryManager;
 
+	//these need to be class scope so that we can cancel them
+	protected ScaleAnimation user1ScaleAnimation;
+	protected ScaleAnimation user2ScaleAnimation;
+
 	protected Context context;
   protected SharedPreferences preferences;
 
   @Override
   protected void onCreate(Bundle savedInstanceState) {
-	super.onCreate(savedInstanceState);
-	setContentView(R.layout.activity_ftc_driver_station);
+		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_ftc_driver_station);
 
-	context = this;
+		context = this;
 
-	textPingStatus = (TextView) findViewById(R.id.textPingStatus);
-	textWifiDirectStatus = (TextView) findViewById(R.id.textWifiDirectStatus);
-	textOpModeQueuedLabel = (TextView) findViewById(R.id.textOpModeQueueLabel);
-	textOpModeQueuedName = (TextView) findViewById(R.id.textOpModeQueueName);
-	textOpModeLabel = (TextView) findViewById(R.id.textOpModeLabel);
-	textOpModeName = (TextView) findViewById(R.id.textOpModeName);
-	textTelemetry = (TextView) findViewById(R.id.textTelemetry);
+		textPingStatus = (TextView) findViewById(R.id.textPingStatus);
+		textWifiDirectStatus = (TextView) findViewById(R.id.textWifiDirectStatus);
+		textOpModeQueuedLabel = (TextView) findViewById(R.id.textOpModeQueueLabel);
+		textOpModeQueuedName = (TextView) findViewById(R.id.textOpModeQueueName);
+		textOpModeLabel = (TextView) findViewById(R.id.textOpModeLabel);
+		textOpModeName = (TextView) findViewById(R.id.textOpModeName);
+		textTelemetry = (TextView) findViewById(R.id.textTelemetry);
+	  textuser1 = (TextView) findViewById(R.id.user1);
+	  textuser2 = (TextView) findViewById(R.id.user2);
 
-	buttonStart = (Button) findViewById(R.id.buttonStart);
-	buttonStartTimed = (Button) findViewById(R.id.buttonStartTimed);
-	buttonSelect = (Button) findViewById(R.id.buttonSelect);
-	buttonStop = (Button) findViewById(R.id.buttonStop);
+	  user1ScaleAnimation = animateAddController(textuser1);
+	  user2ScaleAnimation = animateAddController(textuser2);
 
-	PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
-	preferences = PreferenceManager.getDefaultSharedPreferences(this);
+	  buttonStart = (Button) findViewById(R.id.buttonStart);
+		buttonStartTimed = (Button) findViewById(R.id.buttonStartTimed);
+		buttonSelect = (Button) findViewById(R.id.buttonSelect);
+		buttonStop = (Button) findViewById(R.id.buttonStop);
 
-	RobotLog.writeLogcatToDisk(this, 1024);
+		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
+		preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+		RobotLog.writeLogcatToDisk(this, 1024);
+
+
 
 	  preferences.registerOnSharedPreferenceChangeListener(this);
 
@@ -348,6 +363,40 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	DbgLog.msg("App Stopped");
   }
+
+	//found http://stackoverflow.com/questions/23695626/making-textview-loop-a-growing-and-shrinking-animation
+	public ScaleAnimation animateAddController(View view)
+	{
+
+		view.setRotation(-10);
+
+		ScaleAnimation animation = new ScaleAnimation(0.85f,1.10f,0.85f,1.10f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+		animation.setDuration(800);
+		animation.setRepeatCount(-1);
+		animation.setRepeatMode(Animation.REVERSE);
+		animation.setInterpolator(new AccelerateInterpolator());
+		animation.setAnimationListener(new Animation.AnimationListener()
+		{
+
+			@Override
+			public void onAnimationStart(Animation animation)
+			{
+			}
+
+			@Override
+			public void onAnimationEnd(Animation animation)
+			{
+			}
+
+			@Override
+			public void onAnimationRepeat(Animation animation)
+			{
+			}
+		});
+		view.setAnimation(animation);
+
+		return animation;
+	}
 
   public void showToast(final String msg, final int duration) {
 	runOnUiThread(new Runnable()
@@ -554,31 +603,31 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	}
 
 	protected void telemetryEvent(RobocolDatagram packet) {
-	String telemetryString = "";
-	Telemetry telemetry = null;
-	SortedSet<String> keys;
+		String telemetryString = "";
+		Telemetry telemetry = null;
+		SortedSet<String> keys;
 
-	try {
-	  telemetry = new Telemetry(packet.getData());
-	} catch (RobotCoreException e) {
-	  DbgLog.logStacktrace(e);
-	}
+		try {
+		  telemetry = new Telemetry(packet.getData());
+		} catch (RobotCoreException e) {
+		  DbgLog.logStacktrace(e);
+		}
 
-	Map<String, String> strings = telemetry.getDataStrings();
-	keys = new TreeSet<String>(strings.keySet());
-	for (String key : keys) {
-	  telemetryString += strings.get(key) + "\n";
-	}
-	telemetryString += "\n";
+		Map<String, String> strings = telemetry.getDataStrings();
+		keys = new TreeSet<String>(strings.keySet());
+		for (String key : keys) {
+		  telemetryString += strings.get(key) + "\n";
+		}
+		telemetryString += "\n";
 
-	Map<String, Float> numbers = telemetry.getDataNumbers();
-	keys = new TreeSet<String>(numbers.keySet());
-	for (String key : keys) {
-	  telemetryString += key + ": " + numbers.get(key) + "\n";
-	}
+		Map<String, Float> numbers = telemetry.getDataNumbers();
+		keys = new TreeSet<String>(numbers.keySet());
+		for (String key : keys) {
+		  telemetryString += key + ": " + numbers.get(key) + "\n";
+		}
 
-	DbgLog.msg("TELEMETRY:\n" + telemetryString);
-	setTextView(textTelemetry, telemetryString);
+		DbgLog.msg("TELEMETRY:\n" + telemetryString);
+		setTextView(textTelemetry, telemetryString);
   }
 
   protected void assumeClientConnect() {
@@ -694,11 +743,13 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   protected void setVisibility(final View view, final int visibility) {
-	runOnUiThread(new Runnable() {
-	  @Override
-	  public void run() {
-		view.setVisibility(visibility);
-	  }
+	runOnUiThread(new Runnable()
+	{
+		@Override
+		public void run()
+		{
+			view.setVisibility(visibility);
+		}
 	});
   }
 
@@ -725,10 +776,19 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
 	  if (entry.getValue() == event.getDeviceId()){
 		if (entry.getKey() == 1){
-		  TextView user1 = (TextView) findViewById(R.id.user1);
-		  animateInfo(user1, info, Color.argb(255, 0, 255, 144));
+		  if(!user1ScaleAnimation.hasEnded()) //set it back to normal
+		  {
+			  user1ScaleAnimation.cancel();
+			  textuser1.setTextColor(0xFFFFFF);
+		  }
+		  animateInfo(textuser1, info, Color.argb(255, 0, 255, 144));
 		} if (entry.getKey() == 2){
 		  TextView user2 = (TextView) findViewById(R.id.user2);
+		  if(!user2ScaleAnimation.hasEnded())
+		  {
+			  user2ScaleAnimation.cancel();
+			  textuser2.setTextColor(0xFFFFFF);
+		  }
 		  animateInfo(user2, info, Color.argb(255, 0, 111, 255));
 		}
 	  }

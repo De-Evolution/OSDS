@@ -88,5 +88,7 @@
     <string name="checking_pingable">⌛ Checking…</string>
     <string name="is_pingable">✅ Pingable</string>
     <string name="enter_ip_address">Enter DS IP address</string>
+    <string name="join_player_1">\u0020\u0020Start+A to Join</string>
+    <string name="join_player_2">\u0020\u0020Start+B to Join</string>
 
 </resources>
