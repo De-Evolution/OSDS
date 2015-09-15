@@ -40,6 +40,7 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.SystemClock;
@@ -302,6 +303,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	protected Context context;
   protected SharedPreferences preferences;
 
+	protected Typeface pixelFont;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -329,10 +332,13 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		RobotLog.writeLogcatToDisk(this, 1024);
 
+	  pixelFont = Typeface.createFromAsset(getAssets(), "fonts/Minecraftia-Regular.ttf");
+
 	  user1ScaleAnimation = animateAddController(textuser1);
 	  user2ScaleAnimation = animateAddController(textuser2);
 
 	  preferences.registerOnSharedPreferenceChangeListener(this);
+
 
   }
 
@@ -363,13 +369,15 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
 	//found http://stackoverflow.com/questions/23695626/making-textview-loop-a-growing-and-shrinking-animation
-	public ScaleAnimation animateAddController(View view)
+	public ScaleAnimation animateAddController(TextView view)
 	{
 
 
 		if(preferences.getBoolean(getString(R.string.pref_animate_add_joystick_key), true))
 		{
 			view.setRotation(-15);
+			view.setTypeface(pixelFont);
+			view.setTextSize(12.0F);
 
 			ScaleAnimation animation = new ScaleAnimation(0.85f, 1.10f, 0.85f, 1.10f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
 			animation.setDuration(800);
@@ -405,7 +413,9 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		view.setRotation(0);
 		view.setTextColor(0xffffff);
+		view.setTextSize(14.0F); //default text size
 
+		view.setTypeface(Typeface.DEFAULT);
 		if(currentAnimation != null && !(currentAnimation.hasEnded()))
 		{
 			currentAnimation.cancel();
