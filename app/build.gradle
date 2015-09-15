@@ -6,7 +6,7 @@ android {
     compileSdkVersion 19
     buildToolsVersion "22.0.1"
     defaultConfig {
-        applicationId "com.qualcomm.ftcdriverstation"
+        applicationId 'com.qualcomm.osds'
         minSdkVersion 17
         targetSdkVersion 22
         versionCode 2
@@ -17,6 +17,8 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+    productFlavors {
     }
 }
 
