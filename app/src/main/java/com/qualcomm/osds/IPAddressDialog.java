@@ -1,6 +1,7 @@
 package com.qualcomm.osds;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.Context;
 import android.content.SharedPreferences;
@@ -57,6 +58,8 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 		cancelButton.setOnClickListener(this);
 		ipTextbox.addTextChangedListener(this);
 
+		setTitle(R.string.ip_dialog_title);
+
 	}
 
 	@Override
@@ -70,7 +73,7 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 
 	public IPAddressDialog(Activity activity, SharedPreferences preferences)
 	{
-		super(activity);
+		super(activity, android.R.style.Theme_Holo_Light_Dialog);
 
 		this.activity = activity;
 

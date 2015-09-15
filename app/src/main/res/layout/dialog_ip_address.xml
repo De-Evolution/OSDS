@@ -17,6 +17,7 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="@string/not_valid"
         android:id="@+id/textIsValid"
+        android:padding="5dp"
         android:layout_gravity="center_horizontal"/>
 
     <TextView
@@ -25,6 +26,7 @@
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:text="@string/not_pingable"
         android:id="@+id/textIsPingable"
+        android:padding="5dp"
         android:layout_gravity="center_horizontal"/>
 
 
