@@ -319,9 +319,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	  textuser1 = (TextView) findViewById(R.id.user1);
 	  textuser2 = (TextView) findViewById(R.id.user2);
 
-	  user1ScaleAnimation = animateAddController(textuser1);
-	  user2ScaleAnimation = animateAddController(textuser2);
-
 	  buttonStart = (Button) findViewById(R.id.buttonStart);
 		buttonStartTimed = (Button) findViewById(R.id.buttonStartTimed);
 		buttonSelect = (Button) findViewById(R.id.buttonSelect);
@@ -332,7 +329,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		RobotLog.writeLogcatToDisk(this, 1024);
 
-
+	  user1ScaleAnimation = animateAddController(textuser1);
+	  user2ScaleAnimation = animateAddController(textuser2);
 
 	  preferences.registerOnSharedPreferenceChangeListener(this);
 
@@ -368,34 +366,50 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	public ScaleAnimation animateAddController(View view)
 	{
 
-		view.setRotation(-10);
 
-		ScaleAnimation animation = new ScaleAnimation(0.85f,1.10f,0.85f,1.10f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
-		animation.setDuration(800);
-		animation.setRepeatCount(-1);
-		animation.setRepeatMode(Animation.REVERSE);
-		animation.setInterpolator(new AccelerateInterpolator());
-		animation.setAnimationListener(new Animation.AnimationListener()
+		if(preferences.getBoolean(getString(R.string.pref_animate_add_joystick_key), true))
 		{
+			view.setRotation(-15);
 
-			@Override
-			public void onAnimationStart(Animation animation)
+			ScaleAnimation animation = new ScaleAnimation(0.85f, 1.10f, 0.85f, 1.10f, Animation.RELATIVE_TO_SELF, 0.5f, Animation.RELATIVE_TO_SELF, 1.0f);
+			animation.setDuration(800);
+			animation.setRepeatCount(-1);
+			animation.setRepeatMode(Animation.REVERSE);
+			animation.setInterpolator(new AccelerateInterpolator());
+			animation.setAnimationListener(new Animation.AnimationListener()
 			{
-			}
 
-			@Override
-			public void onAnimationEnd(Animation animation)
-			{
-			}
+				@Override
+				public void onAnimationStart(Animation animation)
+				{
+				}
 
-			@Override
-			public void onAnimationRepeat(Animation animation)
-			{
-			}
-		});
-		view.setAnimation(animation);
+				@Override
+				public void onAnimationEnd(Animation animation)
+				{
+				}
 
-		return animation;
+				@Override
+				public void onAnimationRepeat(Animation animation)
+				{
+				}
+			});
+			view.setAnimation(animation);
+			return animation;
+		}
+		return null;
+	}
+
+	public void unanimateAddController(TextView view, ScaleAnimation currentAnimation)
+	{
+
+		view.setRotation(0);
+		view.setTextColor(0xffffff);
+
+		if(currentAnimation != null && !(currentAnimation.hasEnded()))
+		{
+			currentAnimation.cancel();
+		}
 	}
 
   public void showToast(final String msg, final int duration) {
@@ -776,20 +790,12 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
 	  if (entry.getValue() == event.getDeviceId()){
 		if (entry.getKey() == 1){
-		  if(!user1ScaleAnimation.hasEnded()) //set it back to normal
-		  {
-			  user1ScaleAnimation.cancel();
-			  textuser1.setTextColor(0xFFFFFF);
-		  }
+		  unanimateAddController(textuser1, user1ScaleAnimation);
 		  animateInfo(textuser1, info, Color.argb(255, 0, 255, 144));
 		} if (entry.getKey() == 2){
-		  TextView user2 = (TextView) findViewById(R.id.user2);
-		  if(!user2ScaleAnimation.hasEnded())
-		  {
-			  user2ScaleAnimation.cancel();
-			  textuser2.setTextColor(0xFFFFFF);
-		  }
-		  animateInfo(user2, info, Color.argb(255, 0, 111, 255));
+			  unanimateAddController(textuser2, user2ScaleAnimation);
+
+			  animateInfo(textuser2, info, Color.argb(255, 0, 111, 255));
 		}
 	  }
 	}

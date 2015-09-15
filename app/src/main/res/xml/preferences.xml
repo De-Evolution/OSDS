@@ -16,4 +16,16 @@
 
     </PreferenceCategory>
 
+    <PreferenceCategory
+        android:key="pref_appearance_settings"
+        android:title="@string/pref_appearance_title" >
+
+        <CheckBoxPreference
+            android:key="@string/pref_animate_add_joystick_key"
+            android:title="@string/pref_animate_add_joystick_title"
+            android:summary="You know, those floating things at the bottom that tell you how to add a joystick"
+            android:defaultValue="true"/>
+
+    </PreferenceCategory>
+
 </PreferenceScreen>
