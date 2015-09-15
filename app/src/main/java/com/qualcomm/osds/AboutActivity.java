@@ -83,7 +83,7 @@ public class AboutActivity extends Activity {
             String[] rc = new String[2];
             if (pos == 0) {
               try {
-                rc[0] = "App Version";
+                rc[0] = "OSDS Version";
                 rc[1] =
                     AboutActivity.this.getPackageManager().getPackageInfo(
                         AboutActivity.this.getPackageName(), 0).versionName;
