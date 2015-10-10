@@ -26,6 +26,12 @@
             android:summary="You know, those floating things at the bottom that tell you how to add a joystick"
             android:defaultValue="true"/>
 
+        <CheckBoxPreference
+            android:key="@string/pref_show_telemetry_keys_key"
+            android:title="@string/pref_show_telemetry_keys_title"
+            android:summary="@string/pref_show_telemetry_keys_description"
+            android:defaultValue="true"/>
+
     </PreferenceCategory>
 
 </PreferenceScreen>

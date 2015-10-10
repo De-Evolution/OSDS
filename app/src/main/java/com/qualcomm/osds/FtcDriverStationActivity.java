@@ -305,6 +305,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected Typeface pixelFont;
 
+	protected boolean showTelemetryKeys;
+
   @Override
   protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -329,6 +331,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+	  showTelemetryKeys = preferences.getBoolean(getString(R.string.pref_show_telemetry_keys_key), true);
 
 		RobotLog.writeLogcatToDisk(this, 1024);
 
@@ -412,8 +416,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	{
 
 		view.setRotation(0);
-		view.setTextColor(0xffffff);
-		view.setTextSize(14.0F); //default text size
+		view.setTextColor(Color.BLACK);
+		view.setTextSize(10.0F); //default text size
 
 		view.setTypeface(Typeface.DEFAULT);
 		if(currentAnimation != null && !(currentAnimation.hasEnded()))
@@ -627,7 +631,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	}
 
 	protected void telemetryEvent(RobocolDatagram packet) {
-		String telemetryString = "";
+		StringBuilder telemetryStringBuilder = new StringBuilder();
 		Telemetry telemetry = null;
 		SortedSet<String> keys;
 
@@ -635,14 +639,21 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		  telemetry = new Telemetry(packet.getData());
 		} catch (RobotCoreException e) {
 		  DbgLog.logStacktrace(e);
+			return;
 		}
 
 		Map<String, String> strings = telemetry.getDataStrings();
 		keys = new TreeSet<String>(strings.keySet());
 		for (String key : keys) {
-		  telemetryString += strings.get(key) + "\n";
+			if(showTelemetryKeys)
+			{
+				telemetryStringBuilder.append(key);
+				telemetryStringBuilder.append(": ");
+			}
+			telemetryStringBuilder.append(strings.get(key));
+		  telemetryStringBuilder.append('\n');
 		}
-		telemetryString += "\n";
+		String telemetryString = telemetryStringBuilder.toString();
 
 		Map<String, Float> numbers = telemetry.getDataNumbers();
 		keys = new TreeSet<String>(numbers.keySet());
@@ -687,56 +698,56 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   protected void handleOpModeQueued(String queuedOpMode) {
-	this.queuedOpMode = queuedOpMode;
-	setTextView(textOpModeQueuedName, queuedOpMode);
+		this.queuedOpMode = queuedOpMode;
+		setTextView(textOpModeQueuedName, queuedOpMode);
 
-	setVisibility(textOpModeQueuedLabel, View.VISIBLE);
-	setVisibility(textOpModeQueuedName, View.VISIBLE);
+		setVisibility(textOpModeQueuedLabel, View.VISIBLE);
+		setVisibility(textOpModeQueuedName, View.VISIBLE);
 
-	setEnabled(buttonStart, true);
-	setEnabled(buttonStartTimed, true);
+		setEnabled(buttonStart, true);
+		setEnabled(buttonStartTimed, true);
   }
 
   protected void handleOpModeStop() {
-	opModeUseTimer = false;
-	opModeCountDown.stop();
-	setTextView(buttonStop, getString(R.string.label_stop));
-	pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
+		opModeUseTimer = false;
+		opModeCountDown.stop();
+		setTextView(buttonStop, getString(R.string.label_stop));
+		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
   }
 
   protected void handleOpModeStart(boolean useTimer) {
-	opModeUseTimer = useTimer;
-	opModeCountDown.stop();
-	setTextView(buttonStop, getString(R.string.label_stop));
+		opModeUseTimer = useTimer;
+		opModeCountDown.stop();
+		setTextView(buttonStop, getString(R.string.label_stop));
 
-	pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, queuedOpMode));
+		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, queuedOpMode));
 
-	queuedOpMode = "";
-	setTextView(textTelemetry, "");
-	setTextView(textOpModeQueuedName, "");
-	setVisibility(textOpModeQueuedLabel, View.INVISIBLE);
-	setVisibility(textOpModeQueuedName, View.INVISIBLE);
+		queuedOpMode = "";
+		setTextView(textTelemetry, "");
+		setTextView(textOpModeQueuedName, "");
+		setVisibility(textOpModeQueuedLabel, View.INVISIBLE);
+		setVisibility(textOpModeQueuedName, View.INVISIBLE);
 
-	setEnabled(buttonStart, false);
-	setEnabled(buttonStartTimed, false);
+		setEnabled(buttonStart, false);
+		setEnabled(buttonStartTimed, false);
   }
 
   protected void handleCommandRequestOpModeListResp(String extra) {
-	opModes = new HashSet<String>(Arrays.asList(extra.split(Util.ASCII_RECORD_SEPARATOR)));
-	DbgLog.msg("Received the following op modes: " + opModes.toString());
-	pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
+		opModes = new HashSet<String>(Arrays.asList(extra.split(Util.ASCII_RECORD_SEPARATOR)));
+		DbgLog.msg("Received the following op modes: " + opModes.toString());
+		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
   }
 
   protected void handleCommandSwitchOpModeResp(String extra) {
-	DbgLog.msg("Robot Controller is running op mode: " + extra);
+		DbgLog.msg("Robot Controller is running op mode: " + extra);
 
-	setTextView(textOpModeName, extra);
-	setEnabled(buttonSelect, true);
-	setEnabled(buttonStop, true);
+		setTextView(textOpModeName, extra);
+		setEnabled(buttonSelect, true);
+		setEnabled(buttonStop, true);
 
-	if (opModeUseTimer) {
-	  opModeCountDown.start();
-	}
+		if (opModeUseTimer) {
+		  opModeCountDown.start();
+		}
   }
 
   protected void wifiDirectStatus(final String status) {
@@ -792,23 +803,20 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
   protected void indicateGamepad(Gamepad gamepad, InputEvent event){
 
-	String info = gamepad.toString();
-	info = info.substring(16);
-	info = info.substring(0, 20) + "\n" + info.substring(20, 40) + "\n" + info.substring(40, 57) + "\n" + info.substring(58);
-	info = String.format("Gamepad detected as %s (ID %d)", gamepads.get(event.getDeviceId()).type(), event.getDeviceId()) + "\n" + info;
+		String info = gamepad.toString();
+		info = info.substring(16);
+		info = info.substring(0, 20) + "\n" + info.substring(20, 40) + "\n" + info.substring(40, 57) + "\n" + info.substring(58);
+		info = String.format("Gamepad detected as %s (ID %d)", gamepads.get(event.getDeviceId()).type(), event.getDeviceId()) + "\n" + info;
 
-	for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
-	  if (entry.getValue() == event.getDeviceId()){
-		if (entry.getKey() == 1){
-		  unanimateAddController(textuser1, user1ScaleAnimation);
-		  animateInfo(textuser1, info, Color.argb(255, 0, 255, 144));
-		} if (entry.getKey() == 2){
-			  unanimateAddController(textuser2, user2ScaleAnimation);
-
-			  animateInfo(textuser2, info, Color.argb(255, 0, 111, 255));
+		for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
+		  if (entry.getValue() == event.getDeviceId()){
+			if (entry.getKey() == 1){
+				animateInfo(textuser1, info, Color.argb(255, 0, 255, 144));
+			} if (entry.getKey() == 2){
+				  animateInfo(textuser2, info, Color.argb(255, 0, 111, 255));
+			}
+		  }
 		}
-	  }
-	}
   }
 
   protected void animateInfo(TextView user, String info, int color){
@@ -820,67 +828,71 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
   // needs to be synchronized since multiple gamepad events can come in at the same time
   protected synchronized void handleGamepadEvent(KeyEvent event) {
-	if (!gamepads.containsKey(event.getDeviceId())) {
-	  gamepads.put(event.getDeviceId(), new Gamepad());
-	}
+		if (!gamepads.containsKey(event.getDeviceId())) {
+		  gamepads.put(event.getDeviceId(), new Gamepad());
+		}
 
-	Gamepad gamepad = gamepads.get(event.getDeviceId());
+		Gamepad gamepad = gamepads.get(event.getDeviceId());
 
-	gamepad.update(event);
-	indicateGamepad(gamepad, event);
+		gamepad.update(event);
+		indicateGamepad(gamepad, event);
 
-	if (gamepad.start && (gamepad.a || gamepad.b)) {
-	  int user = -1;
-	  if (gamepad.a) {
-		user = 1;
-	  } else {
-		user = 2;
-	  }
-	  assignNewGamepad(user, event.getDeviceId());
-	}
+		if (gamepad.start && (gamepad.a || gamepad.b)) {
+		  int user = -1;
+		  if (gamepad.a) {
+			user = 1;
+		  } else {
+			user = 2;
+		  }
+		  assignNewGamepad(user, event.getDeviceId());
+		}
   }
 
   protected void initGamepad(int user, int gamepadId) {
-	String key = "";
+		String key = "";
 
-	switch (user) {
-	  // TODO: different pref for user 1 and 2
-	  case 1: key = getString(R.string.pref_gamepad_type_key); break;
-	  case 2: key = getString(R.string.pref_gamepad_type_key); break;
-	}
+		switch (user) {
+		  // TODO: different pref for user 1 and 2
+		  case 1: key = getString(R.string.pref_gamepad_type_key);
+			  unanimateAddController(textuser1, user1ScaleAnimation);
+			  break;
+		  case 2: key = getString(R.string.pref_gamepad_type_key);
+			  unanimateAddController(textuser2, user2ScaleAnimation);
+			  break;
+		}
 
-	String gamepadType = preferences.getString(key, getString(R.string.gamepad_default));
+		String gamepadType = preferences.getString(key, getString(R.string.gamepad_default));
 
-	Gamepad gamepad;
+		Gamepad gamepad;
 
-	if (gamepadType.equals(getString(R.string.gamepad_logitech_f310))) {
-	  gamepad = new LogitechGamepadF310();
-	} else if (gamepadType.equals(getString(R.string.gamepad_microsoft_xbox_360))) {
-	  gamepad = new MicrosoftGamepadXbox360();
-	} else {
-	  gamepad = new Gamepad();
-	}
+		if (gamepadType.equals(getString(R.string.gamepad_logitech_f310))) {
+		  gamepad = new LogitechGamepadF310();
+		} else if (gamepadType.equals(getString(R.string.gamepad_microsoft_xbox_360))) {
+		  gamepad = new MicrosoftGamepadXbox360();
+		} else {
+		  gamepad = new Gamepad();
+		}
 
-	gamepad.id = gamepadId;
-	gamepad.timestamp = SystemClock.uptimeMillis();
+		gamepad.id = gamepadId;
+		gamepad.timestamp = SystemClock.uptimeMillis();
 
-	gamepads.put(gamepadId, gamepad);
+		gamepads.put(gamepadId, gamepad);
   }
 
   protected void assignNewGamepad(int user, int gamepadId) {
 
-	// search for duplicates and remove
-	Set<Integer> duplicates = new HashSet<Integer>();
-	for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
-	  if (entry.getValue() == gamepadId) duplicates.add(entry.getKey());
-	}
-	for (Integer i : duplicates) userToGamepadMap.remove(i);
+		// search for duplicates and remove
+		Set<Integer> duplicates = new HashSet<Integer>();
+		for (Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet()) {
+		  if (entry.getValue() == gamepadId) duplicates.add(entry.getKey());
+		}
+		for (Integer i : duplicates) userToGamepadMap.remove(i);
 
-	// add user to mapping and init gamepad
-	userToGamepadMap.put(user, gamepadId);
-	initGamepad(user, gamepadId);
+		// add user to mapping and init gamepad
+		userToGamepadMap.put(user, gamepadId);
+		initGamepad(user, gamepadId);
 
-	String msg = String.format("Gamepad %d detected as %s (ID %d)", user, gamepads.get(gamepadId).type(), gamepadId);
-	DbgLog.msg(msg);
+		String msg = String.format("Gamepad %d detected as %s (ID %d)", user, gamepads.get(gamepadId).type(), gamepadId);
+		DbgLog.msg(msg);
   }
 }

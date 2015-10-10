@@ -36,6 +36,11 @@
     <string name="pref_animate_add_joystick_key">pref_animate_add_joystick</string>
     <string name="pref_animate_add_joystick_title">Animate Join Messages</string>
 
+    <string name="pref_show_telemetry_keys_key">pref_show_telemetry_keys</string>
+    <string name="pref_show_telemetry_keys_title">Print Telemetry Keys</string>
+    <string name="pref_show_telemetry_keys_description">Show the keys of telemetry data infront of their values.</string>
+
+
     <!-- Wifi Channel Selector -->
     <string-array name="wifi_direct_channels">
     <item>SELECT A CHANNEL</item>
