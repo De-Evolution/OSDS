@@ -131,8 +131,8 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 
   @Override
   protected void onStop() {
-	super.onStop();
-	wifiDirect.disable();
+		super.onStop();
+		wifiDirect.disable();
   }
 
 	@Override

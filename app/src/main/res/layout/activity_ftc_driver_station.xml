@@ -99,6 +99,16 @@
         android:onClick="onClickButtonStop"
         android:text="@string/label_stop"/>
 
+        <Button
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Init"
+            android:id="@+id/buttonInit"
+            android:enabled="false"
+            android:layout_weight="1"
+            android:onClick="onClickButtonInit"/>
+
+
     </LinearLayout>
 
     <LinearLayout
@@ -129,7 +139,7 @@
 
   </LinearLayout>
 
-  <RelativeLayout
+    <RelativeLayout
     android:id="@+id/bottom_layout"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -208,7 +218,9 @@
         </LinearLayout>
 
     </LinearLayout>
-  </RelativeLayout>
+
+
+    </RelativeLayout>
 
 
 

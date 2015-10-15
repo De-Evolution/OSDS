@@ -37,8 +37,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
@@ -59,11 +57,14 @@ import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.qualcomm.analytics.Analytics;
 import com.qualcomm.ftccommon.CommandList;
 import com.qualcomm.ftccommon.DbgLog;
+import com.qualcomm.robotcore.eventloop.EventLoopManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.Gamepad;
+import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.logitech.LogitechGamepadF310;
 import com.qualcomm.robotcore.hardware.microsoft.MicrosoftGamepadXbox360;
 import com.qualcomm.robotcore.robocol.Command;
@@ -72,6 +73,7 @@ import com.qualcomm.robotcore.robocol.PeerDiscoveryManager;
 import com.qualcomm.robotcore.robocol.RobocolDatagram;
 import com.qualcomm.robotcore.robocol.RobocolDatagramSocket;
 import com.qualcomm.robotcore.robocol.Telemetry;
+import com.qualcomm.robotcore.robot.RobotState;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.util.RollingAverage;
@@ -84,6 +86,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -98,201 +101,61 @@ import java.util.concurrent.TimeUnit;
 public abstract class FtcDriverStationActivity extends Activity implements SharedPreferences.OnSharedPreferenceChangeListener, OpModeSelectionDialogFragment.OpModeSelectionDialogListener {
 
   public static final double ASSUME_DISCONNECT_TIMER = 2.0; // in seconds
-  protected class SendLoopRunnable implements Runnable {
-	private static final long GAMEPAD_UPDATE_THRESHOLD = 1000; // in milliseconds
 
-	@Override
-	public void run() {
-	  try {
-		long now = SystemClock.uptimeMillis();
+	protected static final int MAX_COMMAND_ATTEMPTS = 10;
+	protected static final int MAX_LOG_SIZE = 2048;
 
-		// skip if we haven't received a packet in a while
-		if (lastRecvPacket.time() > ASSUME_DISCONNECT_TIMER) {
-		  if (clientConnected) assumeClientDisconnect();
-		  return;
-		}
+	protected boolean clientConnected = false;
 
-		// send heartbeat
-		if (heartbeatSend.getElapsedTime() > 0.1) {
-		  // generate a new heartbeat packet and send it
-		  heartbeatSend = new Heartbeat();
-		  RobocolDatagram packetHeartbeat = new RobocolDatagram(heartbeatSend);
-		  socket.send(packetHeartbeat);
-		}
+	protected String startTimedDefaultText;
 
-		// send gamepads
-		for (Map.Entry<Integer, Integer> userEntry : userToGamepadMap.entrySet()) {
+	@SuppressLint("UseSparseArrays")
+	protected Map<Integer, Gamepad> gamepads = new HashMap<Integer, Gamepad>();
+	@SuppressLint("UseSparseArrays")
+	protected Map<Integer, Integer> userToGamepadMap = new HashMap<Integer, Integer>();
 
-		  int user = userEntry.getKey();
-		  int id = userEntry.getValue();
+	protected Heartbeat heartbeatSend = new Heartbeat();
+	protected Heartbeat heartbeatRecv = new Heartbeat();
 
-		  Gamepad gamepad = gamepads.get(id);
-		  gamepad.user = (byte) user;
+	protected ScheduledExecutorService sendLoopService = Executors.newSingleThreadScheduledExecutor();
+	protected ScheduledFuture<?> sendLoopFuture;
 
-		  // don't send stale gamepads
-		  if (now - gamepad.timestamp > GAMEPAD_UPDATE_THRESHOLD && gamepad.atRest()) continue;
+	protected ExecutorService recvLoopService;
 
-		  RobocolDatagram packetGamepad = new RobocolDatagram(gamepad);
-		  socket.send(packetGamepad);
-		}
+	protected InetAddress remoteAddr;
+	protected RobocolDatagramSocket socket;
 
-		// send commands
-		Iterator<Command> i = pendingCommands.iterator();
-		while (i.hasNext()) {
-		  // using an iterator so we can change the set while looping through all elements
-		  Command command = i.next();
+	protected String queuedOpMode = OpModeManager.DEFAULT_OP_MODE_NAME;
+	protected Set<String> opModes = new LinkedHashSet<String>();
+	protected boolean opModeUseTimer = false;
+	protected OpModeCountDownTimer opModeCountDown = new OpModeCountDownTimer();
+	protected RobotState robotState;
 
-		  // if this command has exceeded max attempts, give up
-		  if (command.getAttempts() > MAX_COMMAND_ATTEMPTS) {
-			String msg = String.format("Giving up on command %s after %d attempts",
-				command.getName(), MAX_COMMAND_ATTEMPTS);
-			showToast(msg, Toast.LENGTH_SHORT);
-			i.remove();
-			continue;
-		  }
+	protected RollingAverage pingAverage = new RollingAverage(10);
+	protected ElapsedTime lastUiUpdate = new ElapsedTime();
+	protected ElapsedTime lastRecvPacket = new ElapsedTime();
 
-		  // log commands we initiated
-		  if (command.isAcknowledged() == false) {
-			DbgLog.msg("    sending command: " + command.getName() + ", attempt: " + command.getAttempts());
-		  }
+	protected Set<Command> pendingCommands = Collections.newSetFromMap(new ConcurrentHashMap<Command, Boolean>());
 
-		  // send the command
-		  RobocolDatagram packetCommand = new RobocolDatagram(command);
-		  socket.send(packetCommand);
+	protected Analytics analytics;
 
-		  // if this is a command we handled, remove it
-		  if (command.isAcknowledged()) pendingCommands.remove(command);
-		}
-	  } catch (RobotCoreException e) {
-		e.printStackTrace();
-	  }
-	}
-  }
-
-  protected class RecvLoopRunnable implements Runnable {
-	@Override
-	public void run() {
-	  while (true) {
-		RobocolDatagram packet = socket.recv();
-
-		if (packet == null) {
-		  if (socket.isClosed())
-			return;
-		  Thread.yield();
-		  continue;
-		}
-		lastRecvPacket.reset();
-
-		switch (packet.getMsgType()) {
-		  case PEER_DISCOVERY:
-			peerDiscoveryEvent(packet);
-			break;
-		  case HEARTBEAT:
-			heartbeatEvent(packet);
-			break;
-		  case COMMAND:
-			commandEvent(packet);
-			break;
-		  case TELEMETRY:
-			telemetryEvent(packet);
-			break;
-		  default:
-			DbgLog.msg("Unhandled message type: " + packet.getMsgType().name());
-			break;
-		}
-	  }
-	}
-  }
-
-  private class OpModeCountDownTimer {
-	private static final long MILLISECONDS_PER_SECOND = 1000;
-	private static final long COUNTDOWN = 30 * MILLISECONDS_PER_SECOND;
-	private static final long TICK      =  1 * MILLISECONDS_PER_SECOND;
-
-	CountDownTimer timer = null;
-	boolean running = false;
-
-	public void start() {
-	  DbgLog.msg("Running current op mode for " + (COUNTDOWN / MILLISECONDS_PER_SECOND) + " seconds");
-	  running = true;
-	  runOnUiThread(new Runnable() {
-		@Override
-		public void run() {
-		  timer = new CountDownTimer(COUNTDOWN, TICK) {
-			@Override
-			public void onTick(long timeRemaining) {
-			  long timeRemainingInSeconds = timeRemaining / MILLISECONDS_PER_SECOND;
-			  String text = getString(R.string.label_stop) + " (" + timeRemainingInSeconds + ")";
-			  setTextView(buttonStop, text);
-			  DbgLog.msg("Running current op mode for " + timeRemainingInSeconds + " seconds");
-			}
-
-			@Override
-			public void onFinish() {
-			  running = false;
-			  DbgLog.msg("Stopping current op mode, timer expired");
-			  handleOpModeStop();
-			}
-		  }.start();
-		}
-	  });
-	}
-
-	public void stop() {
-	  if (!running) return;
-
-	  DbgLog.msg("Stopping current op mode BEFORE timer expired");
-	  if (timer != null) timer.cancel();
-	}
-  }
-
-  protected static final int MAX_COMMAND_ATTEMPTS = 10;
-
-  protected boolean clientConnected = false;
-
-  @SuppressLint("UseSparseArrays")
-  protected Map<Integer, Gamepad> gamepads = new HashMap<Integer, Gamepad>();
-  @SuppressLint("UseSparseArrays")
-  protected Map<Integer, Integer> userToGamepadMap = new HashMap<Integer, Integer>();
-
-  protected Heartbeat heartbeatSend = new Heartbeat();
-  protected Heartbeat heartbeatRecv = new Heartbeat();
-
-  protected ScheduledExecutorService sendLoopService = Executors.newSingleThreadScheduledExecutor();
-  protected ScheduledFuture<?> sendLoopFuture;
-
-  protected ExecutorService recvLoopService;
-
-  protected InetAddress remoteAddr;
-  protected RobocolDatagramSocket socket;
-
-  protected String queuedOpMode = "";
-  protected Set<String> opModes = new HashSet<String>();
-  protected boolean opModeUseTimer = false;
-  protected OpModeCountDownTimer opModeCountDown = new OpModeCountDownTimer();
-
-  protected RollingAverage pingAverage = new RollingAverage(10);
-  protected ElapsedTime lastUiUpdate = new ElapsedTime();
-  protected ElapsedTime lastRecvPacket = new ElapsedTime();
-
-  protected Set<Command> pendingCommands = Collections.newSetFromMap(new ConcurrentHashMap<Command, Boolean>());
-
-  protected TextView textWifiDirectStatus;
-  protected TextView textPingStatus;
-  protected TextView textOpModeQueuedLabel;
-  protected TextView textOpModeQueuedName;
-  protected TextView textOpModeLabel;
-  protected TextView textOpModeName;
-  protected TextView textTelemetry;
+	protected TextView textWifiDirectStatus;
+	protected TextView textPingStatus;
+	protected TextView textOpModeQueuedLabel;
+	protected TextView textOpModeQueuedName;
+	protected TextView textOpModeLabel;
+	protected TextView textOpModeName;
+	protected TextView textTelemetry;
 
 	//gamepad info TextViews
 	protected TextView textuser1;
 	protected TextView textuser2;
 
 	protected Button buttonStart;
-  protected Button buttonStartTimed;
-  protected Button buttonSelect;
-  protected Button buttonStop;
+	protected Button buttonStartTimed;
+	protected Button buttonSelect;
+	protected Button buttonStop;
+	protected Button buttonInit;
 
 	protected PeerDiscoveryManager peerDiscoveryManager;
 
@@ -301,7 +164,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	protected ScaleAnimation user2ScaleAnimation;
 
 	protected Context context;
-  protected SharedPreferences preferences;
+	protected SharedPreferences preferences;
 
 	protected Typeface pixelFont;
 
@@ -328,6 +191,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		buttonStartTimed = (Button) findViewById(R.id.buttonStartTimed);
 		buttonSelect = (Button) findViewById(R.id.buttonSelect);
 		buttonStop = (Button) findViewById(R.id.buttonStop);
+		buttonInit = (Button) findViewById(R.id.buttonInit);
 
 		PreferenceManager.setDefaultValues(this, R.xml.preferences, false);
 		preferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -337,29 +201,39 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		RobotLog.writeLogcatToDisk(this, 1024);
 
 	  pixelFont = Typeface.createFromAsset(getAssets(), "fonts/Minecraftia-Regular.ttf");
+		startTimedDefaultText = getString(R.string.label_start_timed);
 
 	  user1ScaleAnimation = animateAddController(textuser1);
 	  user2ScaleAnimation = animateAddController(textuser2);
 
 	  preferences.registerOnSharedPreferenceChangeListener(this);
 
-
+	  analytics = new Analytics(this.context, Analytics.DS_COMMAND_STRING, new HardwareMap());
   }
 
 	@Override
   protected void onStart()
   {
 	  super.onStart();
+	  assumeClientDisconnect();
+	  RobotLog.writeLogcatToDisk(this, MAX_LOG_SIZE);
+
 
 	  DbgLog.msg("App Started");
   }
 
+	@Override
+	protected void onResume()
+	{
+		super.onResume();
+		this.analytics.register();
+	}
 
-
-  @Override
+	@Override
   protected void onPause() {
-	super.onPause();
-  }
+		super.onPause();
+		this.analytics.unregister();
+	}
 
   @Override
   protected void onStop() {
@@ -367,9 +241,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	// close the old event loops
 	  shutdown();
 
-	  assumeClientDisconnect();
-
-	DbgLog.msg("App Stopped");
+		DbgLog.msg("App Stopped");
+	  RobotLog.cancelWriteLogcatToDisk(this);
   }
 
 	//found http://stackoverflow.com/questions/23695626/making-textview-loop-a-growing-and-shrinking-animation
@@ -427,15 +300,15 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	}
 
   public void showToast(final String msg, final int duration) {
-	runOnUiThread(new Runnable()
-	{
-		@Override
-		public void run()
+		runOnUiThread(new Runnable()
 		{
-			Toast.makeText(context, msg, duration).show();
-		}
-	});
-	DbgLog.msg(msg);
+			@Override
+			public void run()
+			{
+				Toast.makeText(context, msg, duration).show();
+			}
+		});
+		DbgLog.msg(msg);
   }
 
   @Override
@@ -478,98 +351,115 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   @Override
-  public void onConfigurationChanged(Configuration newConfig) {
-	super.onConfigurationChanged(newConfig);
-	// don't destroy assets on screen rotation
-  }
-
-  @Override
-  public boolean dispatchGenericMotionEvent(MotionEvent event) {
-	if (Gamepad.isGamepadDevice(event.getDeviceId())) {
+  public boolean dispatchGenericMotionEvent(MotionEvent event)
+  {
+	  if (!Gamepad.isGamepadDevice(event.getDeviceId())) {
+		  return super.dispatchGenericMotionEvent(event);
+	  }
 	  handleGamepadEvent(event);
 	  return true;
-	}
-
-	return super.dispatchGenericMotionEvent(event);
   }
 
   @Override
   public boolean dispatchKeyEvent(@NonNull KeyEvent event) {
-	if (Gamepad.isGamepadDevice(event.getDeviceId())) {
-	  handleGamepadEvent(event);
-	  return true;
+		if (Gamepad.isGamepadDevice(event.getDeviceId())) {
+		  handleGamepadEvent(event);
+		  return true;
+		}
+
+		return super.dispatchKeyEvent(event);
+  }
+
+	public void onClickButtonInit(View view)
+	{
+		handleOpModeInit();
 	}
 
-	return super.dispatchKeyEvent(event);
+  public void onClickButtonStart(View view)
+  {
+	  this.opModeUseTimer = false;
+	  handleOpModeStart();
   }
 
-  public void onClickButtonStart(View view) {
-	handleOpModeStart(false);
-  }
+	public void onClickButtonStartTimed(View view)
+	{
+		this.opModeUseTimer = true;
 
-  public void onClickButtonStartTimed(View view) {
-	handleOpModeStart(true);
+		setButtonText(buttonStartTimed, "30");
+		this.opModeCountDown.setCountdown(30);
 
-  }
+		handleOpModeStart();
+	}
 
   public void onClickButtonSelect(View view) {
-	// create an array of op modes
-	String[] opModeStringArray = new String[opModes.size()];
-	opModes.toArray(opModeStringArray);
 
-	// display dialog to user
-	OpModeSelectionDialogFragment opModeSelectionDialogFragment = new OpModeSelectionDialogFragment();
-	opModeSelectionDialogFragment.setOnSelectionDialogListener(this);
-	opModeSelectionDialogFragment.setOpModes(opModeStringArray);
-	opModeSelectionDialogFragment.show(getFragmentManager(), "op_mode_selection");
+	  opModeCountDown.stop();
+		// create an array of op modes
+		String[] opModeStringArray = new String[opModes.size()];
+		opModes.toArray(opModeStringArray);
 
-	// selection will be return to onSelectionClick(...) callback
+		// display dialog to user
+		OpModeSelectionDialogFragment opModeSelectionDialogFragment = new OpModeSelectionDialogFragment();
+		opModeSelectionDialogFragment.setOnSelectionDialogListener(this);
+		opModeSelectionDialogFragment.setOpModes(opModeStringArray);
+		opModeSelectionDialogFragment.show(getFragmentManager(), "op_mode_selection");
+
+	  this.pendingCommands.add(new Command(CommandList.CMD_INIT_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
   }
 
   public void onClickButtonStop(View view) {
-	handleOpModeStop();
+		handleOpModeStop();
   }
 
   // Callback method, will be called when the user selects an option from the op mode selection dialog
   @Override
   public void onSelectionClick(String selection) {
-	handleOpModeQueued(selection);
+		handleOpModeQueued(selection);
+
+	  this.opModeCountDown.setCountdown(30);
+	  if (this.opModeUseTimer) {
+		  setButtonText(buttonStartTimed, String.valueOf(this.opModeCountDown.getTimeRemainingInSeconds()));
+	  }
+	  uiWaitingForInitEvent();
   }
 
   protected void shutdown() {
-	if (recvLoopService != null) recvLoopService.shutdownNow();
-	if (sendLoopFuture != null && !sendLoopFuture.isDone()) sendLoopFuture.cancel(true);
-	  if (this.peerDiscoveryManager != null)
-	  {
-		  this.peerDiscoveryManager.stop();
-	  }
+		if (recvLoopService != null) recvLoopService.shutdownNow();
+		if (sendLoopFuture != null && !sendLoopFuture.isDone()) sendLoopFuture.cancel(true);
+		  if (this.peerDiscoveryManager != null)
+		  {
+			  this.peerDiscoveryManager.stop();
+		  }
 
-	// close the socket as well
-	if (socket != null) socket.close();
+		// close the socket as well
+		if (socket != null) socket.close();
 
-	// reset the client
-	remoteAddr = null;
+		// reset the client
+		remoteAddr = null;
 
-	// reset quick status
-	pingStatus("");
+		// reset quick status
+		pingStatus("");
   }
 
 
-  protected void heartbeatEvent(RobocolDatagram packet) {
-	try {
-	  heartbeatRecv.fromByteArray(packet.getData());
-	  double elapsedTime = heartbeatRecv.getElapsedTime();
-	  pingAverage.addNumber((int) (elapsedTime * 1000));
+  protected void heartbeatEvent(RobocolDatagram packet)
+  {
+		try {
+		  heartbeatRecv.fromByteArray(packet.getData());
+		  double elapsedTime = heartbeatRecv.getElapsedTime();
+		  pingAverage.addNumber((int) (elapsedTime * 1000));
 
-	  // greater than one second since last UI update?
-	  if (lastUiUpdate.time() > 0.5) {
-		lastUiUpdate.reset();
+			robotState = RobotState.fromByte(this.heartbeatRecv.getRobotState());
 
-		pingStatus(String.format("Ping: %3dms", pingAverage.getAverage()));
-	  }
-	} catch (RobotCoreException e) {
-	  DbgLog.logStacktrace(e);
-	}
+		  // greater than one second since last UI update?
+		  if (lastUiUpdate.time() > 0.5) {
+				lastUiUpdate.reset();
+
+				pingStatus(String.format("Ping: %3dms", pingAverage.getAverage()));
+		  }
+		} catch (RobotCoreException e) {
+		  DbgLog.logStacktrace(e);
+		}
   }
 
   protected void commandEvent(RobocolDatagram packet) {
@@ -577,8 +467,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	  Command command = new Command(packet.getData());
 
 	  if (command.isAcknowledged()) {
-		pendingCommands.remove(command);
-		return;
+			pendingCommands.remove(command);
+			return;
 	  }
 
 	  // we are to handle this command
@@ -591,8 +481,10 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	  if (name.equals(CommandList.CMD_REQUEST_OP_MODE_LIST_RESP)) {
 		handleCommandRequestOpModeListResp(extra);
-	  } else if (name.equals(CommandList.CMD_SWITCH_OP_MODE_RESP)) {
-		handleCommandSwitchOpModeResp(extra);
+	  } else if (name.equals(CommandList.CMD_INIT_OP_MODE_RESP)) {
+		  handleCommandInitOpModeResp(extra);
+	  } else if (name.equals(CommandList.CMD_RUN_OP_MODE_RESP)) {
+		  handleCommandStartOpModeResp(extra);
 	  } else {
 		DbgLog.msg("Unable to process command " + name);
 	  }
@@ -632,7 +524,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void telemetryEvent(RobocolDatagram packet) {
 		StringBuilder telemetryStringBuilder = new StringBuilder();
-		Telemetry telemetry = null;
+		Telemetry telemetry;
 		SortedSet<String> keys;
 
 		try {
@@ -640,6 +532,17 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		} catch (RobotCoreException e) {
 		  DbgLog.logStacktrace(e);
 			return;
+		}
+
+		//parse out system telemetry messages
+		String tag = telemetry.getTag();
+		if (tag.equals(EventLoopManager.SYSTEM_TELEMETRY))
+		{
+			String errorMsg = telemetry.getDataStrings().get(telemetry.getTag());
+			DbgLog.error("System Telemetry event: " + errorMsg);
+			RobotLog.setGlobalErrorMsg(errorMsg);
+			setTextView(this.textTelemetry, "Robot Status: " + this.robotState + "\n" + "To recover, please restart the robot." + "\n" + "Error: " + errorMsg);
+			uiRobotNeedsRestart();
 		}
 
 		Map<String, String> strings = telemetry.getDataStrings();
@@ -663,12 +566,85 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		DbgLog.msg("TELEMETRY:\n" + telemetryString);
 		setTextView(textTelemetry, telemetryString);
+
+
   }
 
-  protected void assumeClientConnect() {
+	protected void uiRobotNeedsRestart() {
+		setEnabled(this.buttonSelect, false);
+		setEnabled(this.buttonInit, false);
+		setVisibility(this.buttonInit, 0);
+		setVisibility(this.buttonStart, 4);
+		setVisibility(this.buttonStop, 4);
+		setVisibility(this.buttonStartTimed, 4);
+	}
+
+	protected void uiRobotControllerIsDisconnected() {
+		setEnabled(this.buttonSelect, false);
+		setEnabled(this.buttonInit, false);
+		setVisibility(this.buttonInit, 0);
+		setVisibility(this.buttonStart, 4);
+		setVisibility(this.buttonStop, 4);
+		setVisibility(this.buttonStartTimed, 4);
+	}
+
+	protected void uiRobotControllerIsConnected() {
+		setTextView(this.textTelemetry, BuildConfig.VERSION_NAME);
+	}
+
+	protected void uiWaitingForOpModeSelection() {
+		setEnabled(this.buttonSelect, true);
+		setButtonText(buttonSelect, "Select");
+		setEnabled(this.buttonInit, false);
+		setVisibility(this.buttonInit, 0);
+		setVisibility(this.buttonStart, 4);
+		setVisibility(this.buttonStop, 4);
+		setVisibility(this.buttonStartTimed, 4);
+	}
+
+	protected void uiWaitingForInitEvent() {
+		if(queuedOpMode.isEmpty())
+		{
+			setButtonText(buttonSelect, "Select");
+		}
+		else
+		{
+			setButtonText(buttonSelect, "> " + queuedOpMode);
+		}
+		setEnabled(this.buttonSelect, true);
+		setEnabled(this.buttonInit, true);
+		setVisibility(this.buttonInit, 0);
+		setVisibility(this.buttonStart, 4);
+		setVisibility(this.buttonStop, 4);
+		setEnabled(this.buttonStartTimed, true);
+		setVisibility(this.buttonStartTimed, 0);
+	}
+
+	protected void uiWaitingForStartEvent() {
+		setButtonText(buttonSelect, "> " + queuedOpMode);
+		setEnabled(this.buttonSelect, true);
+		setVisibility(this.buttonStart, 0);
+		setVisibility(this.buttonInit, 4);
+		setVisibility(this.buttonStop, 4);
+		setEnabled(this.buttonStartTimed, true);
+		setVisibility(this.buttonStartTimed, 0);
+	}
+
+	protected void uiWaitingForStopEvent() {
+		setButtonText(buttonSelect, "Select");
+		setEnabled(this.buttonSelect, true);
+		setVisibility(this.buttonStop, 0);
+		setVisibility(this.buttonInit, 4);
+		setVisibility(this.buttonStart, 4);
+		setEnabled(this.buttonStartTimed, false);
+		setVisibility(this.buttonStartTimed, 0);
+	}
+
+
+	protected void assumeClientConnect() {
 		DbgLog.msg("Assuming client connected");
 		clientConnected = true;
-
+		uiRobotControllerIsConnected();
 		// request a list of available op modes
 		pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
   }
@@ -691,76 +667,103 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		setTextView(buttonStop, getString(R.string.label_stop));
 		setTextView(textTelemetry, "");
 
+	  setButtonText(buttonStartTimed, startTimedDefaultText);
+
 		setEnabled(buttonSelect, false);
 		setEnabled(buttonStop, false);
 		setEnabled(buttonStart, false);
 		setEnabled(buttonStartTimed, false);
+
+	  RobotLog.clearGlobalErrorMsg();
+	  uiRobotControllerIsDisconnected();
   }
 
-  protected void handleOpModeQueued(String queuedOpMode) {
+	protected void handleOpModeQueued(String queuedOpMode) {
 		this.queuedOpMode = queuedOpMode;
-		setTextView(textOpModeQueuedName, queuedOpMode);
+		buttonSelect.setText(queuedOpMode);
+	}
 
-		setVisibility(textOpModeQueuedLabel, View.VISIBLE);
-		setVisibility(textOpModeQueuedName, View.VISIBLE);
+	protected void handleOpModeStop() {
+		this.opModeCountDown.stop();
+		if (!buttonStartTimed.getText().toString().equals(startTimedDefaultText)) {
+			opModeCountDown.setCountdown(Long.parseLong(buttonStartTimed.getText().toString()));
+		}
+		uiWaitingForInitEvent();
+		this.pendingCommands.add(new Command(CommandList.CMD_INIT_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
+	}
 
-		setEnabled(buttonStart, true);
-		setEnabled(buttonStartTimed, true);
+	protected void clearInfo() {
+		setTextView(this.textTelemetry, BuildConfig.VERSION_NAME);
+	}
+
+	protected void handleOpModeInit() {
+		this.opModeCountDown.stop();
+		uiWaitingForStartEvent();
+		this.pendingCommands.add(new Command(CommandList.CMD_INIT_OP_MODE, this.queuedOpMode));
+		clearInfo();
+	}
+
+  protected void handleOpModeStart()
+  {
+	  opModeCountDown.stop();
+	  uiWaitingForStopEvent();
+	  pendingCommands.add(new Command(CommandList.CMD_RUN_OP_MODE, queuedOpMode));
+	  clearInfo();
   }
 
-  protected void handleOpModeStop() {
-		opModeUseTimer = false;
-		opModeCountDown.stop();
-		setTextView(buttonStop, getString(R.string.label_stop));
-		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
-  }
-
-  protected void handleOpModeStart(boolean useTimer) {
-		opModeUseTimer = useTimer;
-		opModeCountDown.stop();
-		setTextView(buttonStop, getString(R.string.label_stop));
-
-		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, queuedOpMode));
-
-		queuedOpMode = "";
-		setTextView(textTelemetry, "");
-		setTextView(textOpModeQueuedName, "");
-		setVisibility(textOpModeQueuedLabel, View.INVISIBLE);
-		setVisibility(textOpModeQueuedName, View.INVISIBLE);
-
-		setEnabled(buttonStart, false);
-		setEnabled(buttonStartTimed, false);
-  }
-
-  protected void handleCommandRequestOpModeListResp(String extra) {
+	protected void handleCommandRequestOpModeListResp(String extra)
+	{
+		opModes = new LinkedHashSet<String>();
 		opModes = new HashSet<String>(Arrays.asList(extra.split(Util.ASCII_RECORD_SEPARATOR)));
 		DbgLog.msg("Received the following op modes: " + opModes.toString());
-		pendingCommands.add(new Command(CommandList.CMD_SWITCH_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
-  }
+		pendingCommands.add(new Command(CommandList.CMD_INIT_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
+		uiWaitingForOpModeSelection();
+	}
 
-  protected void handleCommandSwitchOpModeResp(String extra) {
-		DbgLog.msg("Robot Controller is running op mode: " + extra);
-
-		setTextView(textOpModeName, extra);
-		setEnabled(buttonSelect, true);
-		setEnabled(buttonStop, true);
-
-		if (opModeUseTimer) {
-		  opModeCountDown.start();
+	protected void handleCommandInitOpModeResp(String extra) {
+		DbgLog.msg("Robot Controller initializing op mode: " + extra);
+		if (!extra.equals(OpModeManager.DEFAULT_OP_MODE_NAME)) {
+			uiWaitingForStartEvent();
+		} else if (this.queuedOpMode.equals(OpModeManager.DEFAULT_OP_MODE_NAME)) {
+			uiWaitingForOpModeSelection();
+		} else {
+			uiWaitingForInitEvent();
+			this.pendingCommands.add(new Command(CommandList.CMD_RUN_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
 		}
-  }
+	}
+
+	protected void handleCommandStartOpModeResp(String extra) {
+		DbgLog.msg("Robot Controller starting op mode: " + extra);
+		if (!extra.equals(OpModeManager.DEFAULT_OP_MODE_NAME)) {
+			uiWaitingForStopEvent();
+		}
+		if (this.opModeUseTimer && !extra.equals(OpModeManager.DEFAULT_OP_MODE_NAME)) {
+			this.opModeCountDown.start();
+		}
+	}
 
   protected void wifiDirectStatus(final String status) {
-	runOnUiThread(new Runnable() {
-	  @Override
-	  public void run() {
-		textWifiDirectStatus.setText(status);
-	  }
-	});
+		runOnUiThread(new Runnable()
+		{
+			@Override
+			public void run()
+			{
+				textWifiDirectStatus.setText(status);
+			}
+		});
   }
 
+	protected void setButtonText(final Button button, final String text) {
+		runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				button.setText(text);
+			}
+		});
+	}
+
   protected void setTextView(final TextView textView, final String text) {
-	runOnUiThread(new Runnable() {
+		runOnUiThread(new Runnable() {
 	  @Override
 	  public void run() {
 		textView.setText(text);
@@ -769,7 +772,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   protected void setEnabled(final View view, final boolean enabled) {
-	runOnUiThread(new Runnable() {
+		runOnUiThread(new Runnable() {
 	  @Override
 	  public void run() {
 		view.setEnabled(enabled);
@@ -778,7 +781,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
   }
 
   protected void setVisibility(final View view, final int visibility) {
-	runOnUiThread(new Runnable()
+		runOnUiThread(new Runnable()
 	{
 		@Override
 		public void run()
@@ -788,17 +791,18 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	});
   }
 
-  protected void pingStatus(final String status) {
-	setTextView(textPingStatus, status);
+  protected void pingStatus(final String status)
+  {
+		setTextView(textPingStatus, status);
   }
 
   // needs to be synchronized since multiple gamepad events can come in at the same time
   protected synchronized void handleGamepadEvent(MotionEvent event) {
-	Gamepad gamepad = gamepads.get(event.getDeviceId());
-	if (gamepad == null) return; // we aren't tracking this gamepad
+		Gamepad gamepad = gamepads.get(event.getDeviceId());
+		if (gamepad == null) return; // we aren't tracking this gamepad
 
-	gamepad.update(event);
-	indicateGamepad(gamepad, event);
+		gamepad.update(event);
+		indicateGamepad(gamepad, event);
   }
 
   protected void indicateGamepad(Gamepad gamepad, InputEvent event){
@@ -838,11 +842,11 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		indicateGamepad(gamepad, event);
 
 		if (gamepad.start && (gamepad.a || gamepad.b)) {
-		  int user = -1;
+		  int user;
 		  if (gamepad.a) {
-			user = 1;
+				user = 1;
 		  } else {
-			user = 2;
+				user = 2;
 		  }
 		  assignNewGamepad(user, event.getDeviceId());
 		}
@@ -895,4 +899,191 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		String msg = String.format("Gamepad %d detected as %s (ID %d)", user, gamepads.get(gamepadId).type(), gamepadId);
 		DbgLog.msg(msg);
   }
+
+
+	protected class SendLoopRunnable implements Runnable
+	{
+		private static final long GAMEPAD_UPDATE_THRESHOLD = 1000; // in milliseconds
+
+		@Override
+		public void run() {
+			try {
+				long now = SystemClock.uptimeMillis();
+
+				// skip if we haven't received a packet in a while
+				if (lastRecvPacket.time() > ASSUME_DISCONNECT_TIMER) {
+					if (clientConnected) assumeClientDisconnect();
+					return;
+				}
+
+				// send heartbeat
+				if (heartbeatSend.getElapsedTime() > 0.1) {
+					// generate a new heartbeat packet and send it
+					heartbeatSend = new Heartbeat();
+					RobocolDatagram packetHeartbeat = new RobocolDatagram(heartbeatSend);
+					socket.send(packetHeartbeat);
+				}
+
+				// send gamepads
+				for (Map.Entry<Integer, Integer> userEntry : userToGamepadMap.entrySet()) {
+
+					int user = userEntry.getKey();
+					int id = userEntry.getValue();
+
+					Gamepad gamepad = gamepads.get(id);
+					gamepad.user = (byte) user;
+
+					// don't send stale gamepads
+					if (now - gamepad.timestamp > GAMEPAD_UPDATE_THRESHOLD && gamepad.atRest()) continue;
+
+					RobocolDatagram packetGamepad = new RobocolDatagram(gamepad);
+					socket.send(packetGamepad);
+				}
+
+				// send commands
+				Iterator<Command> i = pendingCommands.iterator();
+				while (i.hasNext()) {
+					// using an iterator so we can change the set while looping through all elements
+					Command command = i.next();
+
+					// if this command has exceeded max attempts, give up
+					if (command.getAttempts() > MAX_COMMAND_ATTEMPTS) {
+						String msg = String.format("Giving up on command %s after %d attempts",
+								command.getName(), MAX_COMMAND_ATTEMPTS);
+						showToast(msg, Toast.LENGTH_SHORT);
+						i.remove();
+						continue;
+					}
+
+					// log commands we initiated
+					if(!command.isAcknowledged()) {
+						DbgLog.msg("    sending command: " + command.getName() + ", attempt: " + command.getAttempts());
+					}
+
+					// send the command
+					RobocolDatagram packetCommand = new RobocolDatagram(command);
+					socket.send(packetCommand);
+
+					// if this is a command we handled, remove it
+					if (command.isAcknowledged()) pendingCommands.remove(command);
+				}
+			} catch (RobotCoreException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	protected class RecvLoopRunnable implements Runnable {
+		@Override
+		public void run() {
+			while (true) {
+				RobocolDatagram packet = socket.recv();
+
+				if (packet == null) {
+					if (socket.isClosed())
+						return;
+					Thread.yield();
+					continue;
+				}
+				lastRecvPacket.reset();
+
+				switch (packet.getMsgType()) {
+					case PEER_DISCOVERY:
+						peerDiscoveryEvent(packet);
+						break;
+					case HEARTBEAT:
+						heartbeatEvent(packet);
+						break;
+					case COMMAND:
+						commandEvent(packet);
+						break;
+					case TELEMETRY:
+						telemetryEvent(packet);
+						break;
+					default:
+						DbgLog.msg("Unhandled message type: " + packet.getMsgType().name());
+						break;
+				}
+			}
+		}
+	}
+
+	private class OpModeCountDownTimer
+	{
+		public static final long COUNTDOWN_INTERVAL = 30;
+		public static final long TICK = 1000;
+		private long countdown;
+		boolean running;
+		CountDownTimer timer;
+
+		/* renamed from: com.qualcomm.ftcdriverstation.FtcDriverStationActivity.OpModeCountDownTimer.1 */
+		class TimerInstantiator implements Runnable
+		{
+
+			/* renamed from: com.qualcomm.ftcdriverstation.FtcDriverStationActivity.OpModeCountDownTimer.1.1 */
+			class OpModeTimer extends CountDownTimer
+			{
+				OpModeTimer(long timeInFuture, long countDownInterval)
+				{
+					super(timeInFuture, countDownInterval);
+				}
+
+				public void onTick(long timeRemaining) {
+					long timeRemainingInSeconds = timeRemaining / OpModeCountDownTimer.TICK;
+					setButtonText(buttonStartTimed, String.valueOf(timeRemainingInSeconds));
+					DbgLog.msg("Running current op mode for " + timeRemainingInSeconds + " seconds");
+				}
+
+				public void onFinish() {
+					OpModeCountDownTimer.this.running = false;
+					DbgLog.msg("Stopping current op mode, timer expired");
+					setCountdown(OpModeCountDownTimer.COUNTDOWN_INTERVAL);
+					setButtonText(buttonStartTimed, startTimedDefaultText);
+					//setImageResource(FtcDriverStationActivity.this.buttonStartTimed, R.drawable.icon_timeroff);
+					FtcDriverStationActivity.this.handleOpModeStop();
+				}
+			}
+
+			TimerInstantiator() {
+			}
+
+			public void run() {
+				OpModeCountDownTimer.this.timer = new OpModeTimer(OpModeCountDownTimer.this.countdown, OpModeCountDownTimer.TICK).start();
+			}
+		}
+
+		private OpModeCountDownTimer() {
+			this.countdown = 30000;
+			this.timer = null;
+			this.running = false;
+		}
+
+		public void start() {
+			DbgLog.msg("Running current op mode for " + getTimeRemainingInSeconds() + " seconds");
+			this.running = true;
+			FtcDriverStationActivity.this.runOnUiThread(new TimerInstantiator());
+		}
+
+		public void stop() {
+			if (this.running) {
+				this.running = false;
+				DbgLog.msg("Stopping current op mode timer");
+				if (this.timer != null) {
+					this.timer.cancel();
+				}
+			}
+		}
+
+		public boolean isRunning() {
+			return this.running;
+		}
+
+		public long getTimeRemainingInSeconds() {
+			return this.countdown / TICK;
+		}
+
+		public void setCountdown(long remaining) {
+			this.countdown = TICK * remaining;
+		}
+	}
 }
