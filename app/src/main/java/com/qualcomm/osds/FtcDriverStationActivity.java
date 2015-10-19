@@ -127,7 +127,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected String queuedOpMode = OpModeManager.DEFAULT_OP_MODE_NAME;
 	protected Set<String> opModes = new LinkedHashSet<String>();
-	protected boolean opModeUseTimer = false;
+	protected boolean opModeUseTimer = false; //used by onClickButtonStart to communicate whether the timer should be used
 	protected OpModeCountDownTimer opModeCountDown = new OpModeCountDownTimer();
 	protected RobotState robotState;
 
@@ -385,7 +385,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	{
 		this.opModeUseTimer = true;
 
-		setButtonText(buttonStartTimed, "30");
 		this.opModeCountDown.setCountdown(30);
 
 		handleOpModeStart();
@@ -417,9 +416,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		handleOpModeQueued(selection);
 
 	  this.opModeCountDown.setCountdown(30);
-	  if (this.opModeUseTimer) {
-		  setButtonText(buttonStartTimed, String.valueOf(this.opModeCountDown.getTimeRemainingInSeconds()));
-	  }
 	  uiWaitingForInitEvent();
   }
 
@@ -478,6 +474,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	  String name = command.getName();
 	  String extra = command.getExtra();
+
+		DbgLog.msg(name);
 
 	  if (name.equals(CommandList.CMD_REQUEST_OP_MODE_LIST_RESP)) {
 		handleCommandRequestOpModeListResp(extra);
@@ -564,42 +562,34 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		  telemetryString += key + ": " + numbers.get(key) + "\n";
 		}
 
-		DbgLog.msg("TELEMETRY:\n" + telemetryString);
+		//DbgLog.msg("TELEMETRY:\n" + telemetryString);
 		setTextView(textTelemetry, telemetryString);
 
 
   }
 
 	protected void uiRobotNeedsRestart() {
-		setEnabled(this.buttonSelect, false);
-		setEnabled(this.buttonInit, false);
-		setVisibility(this.buttonInit, 0);
-		setVisibility(this.buttonStart, 4);
-		setVisibility(this.buttonStop, 4);
-		setVisibility(this.buttonStartTimed, 4);
+		//currently does the same thing
+		uiRobotControllerIsDisconnected();
 	}
 
 	protected void uiRobotControllerIsDisconnected() {
 		setEnabled(this.buttonSelect, false);
 		setEnabled(this.buttonInit, false);
-		setVisibility(this.buttonInit, 0);
-		setVisibility(this.buttonStart, 4);
-		setVisibility(this.buttonStop, 4);
-		setVisibility(this.buttonStartTimed, 4);
+		setEnabled(this.buttonStart, false);
+		setEnabled(this.buttonStop, false);
+		setEnabled(this.buttonStartTimed, false);
+
 	}
 
-	protected void uiRobotControllerIsConnected() {
-		setTextView(this.textTelemetry, BuildConfig.VERSION_NAME);
-	}
 
 	protected void uiWaitingForOpModeSelection() {
 		setEnabled(this.buttonSelect, true);
 		setButtonText(buttonSelect, "Select");
 		setEnabled(this.buttonInit, false);
-		setVisibility(this.buttonInit, 0);
-		setVisibility(this.buttonStart, 4);
-		setVisibility(this.buttonStop, 4);
-		setVisibility(this.buttonStartTimed, 4);
+		setEnabled(this.buttonStart, false);
+		setEnabled(this.buttonStop, false);
+		setEnabled(this.buttonStartTimed, false);
 	}
 
 	protected void uiWaitingForInitEvent() {
@@ -613,38 +603,36 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		}
 		setEnabled(this.buttonSelect, true);
 		setEnabled(this.buttonInit, true);
-		setVisibility(this.buttonInit, 0);
-		setVisibility(this.buttonStart, 4);
-		setVisibility(this.buttonStop, 4);
+		setEnabled(this.buttonStart, false);
+		//setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, true);
-		setVisibility(this.buttonStartTimed, 0);
 	}
 
 	protected void uiWaitingForStartEvent() {
 		setButtonText(buttonSelect, "> " + queuedOpMode);
 		setEnabled(this.buttonSelect, true);
-		setVisibility(this.buttonStart, 0);
-		setVisibility(this.buttonInit, 4);
-		setVisibility(this.buttonStop, 4);
+		setEnabled(this.buttonInit, false);
+		setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, true);
-		setVisibility(this.buttonStartTimed, 0);
+		setEnabled(this.buttonStart, true);
 	}
 
-	protected void uiWaitingForStopEvent() {
+	protected void uiWaitingForStopEvent()
+	{
 		setButtonText(buttonSelect, "Select");
 		setEnabled(this.buttonSelect, true);
-		setVisibility(this.buttonStop, 0);
-		setVisibility(this.buttonInit, 4);
-		setVisibility(this.buttonStart, 4);
+		setEnabled(this.buttonStop, true);
+		setEnabled(this.buttonStart, false);
+		setEnabled(this.buttonInit, false);
 		setEnabled(this.buttonStartTimed, false);
-		setVisibility(this.buttonStartTimed, 0);
+		setEnabled(this.buttonStart, false);
 	}
 
 
 	protected void assumeClientConnect() {
 		DbgLog.msg("Assuming client connected");
 		clientConnected = true;
-		uiRobotControllerIsConnected();
+		uiWaitingForOpModeSelection();
 		// request a list of available op modes
 		pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
   }
@@ -680,7 +668,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void handleOpModeQueued(String queuedOpMode) {
 		this.queuedOpMode = queuedOpMode;
-		buttonSelect.setText(queuedOpMode);
 	}
 
 	protected void handleOpModeStop() {
@@ -1040,6 +1027,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 					setCountdown(OpModeCountDownTimer.COUNTDOWN_INTERVAL);
 					setButtonText(buttonStartTimed, startTimedDefaultText);
 					//setImageResource(FtcDriverStationActivity.this.buttonStartTimed, R.drawable.icon_timeroff);
+
+					setEnabled(buttonStop, false);
 					FtcDriverStationActivity.this.handleOpModeStop();
 				}
 			}
