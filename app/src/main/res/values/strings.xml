@@ -64,8 +64,11 @@
     <string name="restore_settings">Restore Saved WiFi Settings</string>
 
     <string name="label_current_op_mode">current op mode:</string>
-    <string name="label_queued_op_mode">queued:</string>
-    <string name="label_loading_op_mode">Loading...</string>
+    <string name="label_rc_battery">controller battery:</string>
+    <string name="label_robot_battery">robot battery:</string>
+    <string name="label_unknown_RC_battery">-- %</string>
+    <string name="label_unknown_robot_battery">--- V</string>
+    <string name="label_loading_op_mode">Loading…</string>
     <string name="label_start">Start</string>
     <string name="label_start_timed">Start w/ Timer</string>
     <string name="label_select">Select</string>

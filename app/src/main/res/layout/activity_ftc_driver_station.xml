@@ -22,51 +22,78 @@
     android:layout_below="@+id/textWifiDirectStatus"
     android:text=""/>
 
-  <TextView
-    android:id="@+id/textOpModeQueueLabel"
-    android:layout_width="120dp"
-    android:layout_height="32dp"
-    android:layout_alignParentLeft="true"
-    android:layout_below="@+id/textPingStatus"
-    android:layout_marginTop="32dp"
-    android:gravity="right|center_vertical"
-    android:text="@string/label_queued_op_mode"
-    android:visibility="invisible"/>
+    <RelativeLayout
+        android:orientation="horizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/batteryStatusLayout"
+        android:layout_below="@+id/textPingStatus"
+        android:layout_marginStart="8dp">
 
-  <TextView
-    android:id="@+id/textOpModeQueueName"
-    android:layout_width="fill_parent"
-    android:layout_height="32dp"
-    android:layout_alignBaseline="@+id/textOpModeQueueLabel"
-    android:layout_marginLeft="8dp"
-    android:layout_toRightOf="@+id/textOpModeQueueLabel"
-    android:ellipsize="end"
-    android:gravity="left|center_vertical"
-    android:maxLines="1"
-    android:text=""
-    android:visibility="invisible"/>
+        <TextView
+            android:id="@+id/textRobotBatteryLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:gravity="start|center_vertical"
+            android:text="@string/label_robot_battery"/>
+
+        <TextView
+            android:id="@+id/textRobotBatteryVoltage"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:layout_marginStart="5dp"
+            android:ellipsize="end"
+            android:gravity="start|center_vertical"
+            android:maxLines="1"
+            android:layout_toEndOf="@+id/textRobotBatteryLabel"
+            android:text="@string/label_unknown_robot_battery"/>
+
+        <TextView
+            android:id="@+id/textRCBatteryLabel"
+            android:layout_height="32dp"
+            android:layout_width="wrap_content"
+            android:gravity="end|center_vertical"
+            android:text="@string/label_rc_battery"
+            android:layout_alignParentTop="true"
+            android:layout_toStartOf="@+id/textRCBatteryPercent"
+            android:layout_marginEnd="5dp"/>
+
+        <TextView
+            android:id="@+id/textRCBatteryPercent"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:ellipsize="end"
+            android:gravity="end|center_vertical"
+            android:maxLines="1"
+            android:text="@string/label_unknown_RC_battery"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"/>
+
+
+    </RelativeLayout>
+
 
   <TextView
     android:id="@+id/textOpModeLabel"
     android:layout_width="120dp"
     android:layout_height="32dp"
-    android:layout_alignParentLeft="true"
-    android:layout_below="@+id/textOpModeQueueLabel"
-    android:gravity="right|center_vertical"
+    android:layout_alignParentStart="true"
+    android:layout_below="@+id/batteryStatusLayout"
+    android:gravity="end|center_vertical"
     android:text="@string/label_current_op_mode"/>
 
   <TextView
     android:id="@+id/textOpModeName"
-    android:layout_width="fill_parent"
+    android:layout_width="wrap_content"
     android:layout_height="32dp"
-    android:layout_alignBaseline="@+id/textOpModeLabel"
-    android:layout_marginLeft="8dp"
-    android:layout_toRightOf="@+id/textOpModeLabel"
+    android:layout_marginStart="8dp"
     android:ellipsize="end"
-    android:gravity="left|center_vertical"
+    android:gravity="start|center_vertical"
     android:maxLines="1"
-    android:text=""
-    android:textAppearance="?android:attr/textAppearanceMedium"/>
+    android:text="blkblblblblblbl"
+    android:textAppearance="?android:attr/textAppearanceMedium"
+    android:layout_below="@+id/batteryStatusLayout"
+    android:layout_toEndOf="@+id/textOpModeLabel"/>
 
   <LinearLayout
     android:layout_width="fill_parent"

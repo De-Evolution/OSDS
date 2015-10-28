@@ -44,6 +44,7 @@ import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
+import android.util.Log;
 import android.view.InputEvent;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -141,8 +142,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected TextView textWifiDirectStatus;
 	protected TextView textPingStatus;
-	protected TextView textOpModeQueuedLabel;
-	protected TextView textOpModeQueuedName;
+	protected TextView textRCBatteryPercent;
+	protected TextView textRobotBatteryVoltage;
 	protected TextView textOpModeLabel;
 	protected TextView textOpModeName;
 	protected TextView textTelemetry;
@@ -179,8 +180,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		textPingStatus = (TextView) findViewById(R.id.textPingStatus);
 		textWifiDirectStatus = (TextView) findViewById(R.id.textWifiDirectStatus);
-		textOpModeQueuedLabel = (TextView) findViewById(R.id.textOpModeQueueLabel);
-		textOpModeQueuedName = (TextView) findViewById(R.id.textOpModeQueueName);
+		textRCBatteryPercent = (TextView) findViewById(R.id.textRCBatteryPercent);
+		textRobotBatteryVoltage = (TextView) findViewById(R.id.textRobotBatteryVoltage);
 		textOpModeLabel = (TextView) findViewById(R.id.textOpModeLabel);
 		textOpModeName = (TextView) findViewById(R.id.textOpModeName);
 		textTelemetry = (TextView) findViewById(R.id.textTelemetry);
@@ -539,38 +540,63 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 			String errorMsg = telemetry.getDataStrings().get(telemetry.getTag());
 			DbgLog.error("System Telemetry event: " + errorMsg);
 			RobotLog.setGlobalErrorMsg(errorMsg);
-			setTextView(this.textTelemetry, "Robot Status: " + this.robotState + "\n" + "To recover, please restart the robot." + "\n" + "Error: " + errorMsg);
+			setTextView(textWifiDirectStatus, "Robot is hosed. To recover, please restart the robot. Error: " + errorMsg);
 			uiRobotNeedsRestart();
 		}
+		else if(tag.equals("RobotController Battery Level"))
+		{
+			String percent = telemetry.getDataStrings().get(telemetry.getTag());
+			DbgLog.msg("RC battery Telemetry event: " + percent);
+			setTextView(textRCBatteryPercent, percent + "%");
+		}
+		else if(tag.equals(EventLoopManager.ROBOT_BATTERY_LEVEL_KEY))
+		{
+			String voltage = telemetry.getDataStrings().get(telemetry.getTag());
+			DbgLog.msg("Robot Battery Telemetry event: " + voltage);
 
+			if(voltage.equals("no voltage sensor found"))
+			{
+				setTextView(textRobotBatteryVoltage, getString(R.string.label_unknown_robot_battery));
+			}
+			else
+			{
+				setTextView(textRobotBatteryVoltage, voltage);
+			}
+		}
+		else
+		{
 		Map<String, String> strings = telemetry.getDataStrings();
 		keys = new TreeSet<String>(strings.keySet());
-		for (String key : keys) {
-			if(showTelemetryKeys)
+		for (String key : keys)
+		{
+			if (showTelemetryKeys)
 			{
 				telemetryStringBuilder.append(key);
 				telemetryStringBuilder.append(": ");
 			}
 			telemetryStringBuilder.append(strings.get(key));
-		  telemetryStringBuilder.append('\n');
+			telemetryStringBuilder.append('\n');
 		}
 		String telemetryString = telemetryStringBuilder.toString();
 
 		Map<String, Float> numbers = telemetry.getDataNumbers();
 		keys = new TreeSet<String>(numbers.keySet());
-		for (String key : keys) {
-		  telemetryString += key + ": " + numbers.get(key) + "\n";
+		for (String key : keys)
+		{
+			telemetryString += key + ": " + numbers.get(key) + "\n";
 		}
 
 		//DbgLog.msg("TELEMETRY:\n" + telemetryString);
 		setTextView(textTelemetry, telemetryString);
-
+	}
 
   }
 
 	protected void uiRobotNeedsRestart() {
 		//currently does the same thing
 		uiRobotControllerIsDisconnected();
+
+		Log.d("OSDS UI Change", "uiRobotNeedsRestart()");
 	}
 
 	protected void uiRobotControllerIsDisconnected() {
@@ -579,53 +605,58 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		setEnabled(this.buttonStart, false);
 		setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, false);
+		Log.d("OSDS UI Change", "uiRobotControllerIsDisconnected()");
 
 	}
 
 
 	protected void uiWaitingForOpModeSelection() {
 		setEnabled(this.buttonSelect, true);
-		setButtonText(buttonSelect, "Select");
 		setEnabled(this.buttonInit, false);
 		setEnabled(this.buttonStart, false);
 		setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, false);
+		setTextView(textOpModeName, "");
+		Log.d("OSDS UI Change", "uiWaitingForOpModeSelection()");
+
 	}
 
-	protected void uiWaitingForInitEvent() {
-		if(queuedOpMode.isEmpty())
+	protected void uiWaitingForInitEvent()
+	{
+		if(!queuedOpMode.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
 		{
-			setButtonText(buttonSelect, "Select");
-		}
-		else
-		{
-			setButtonText(buttonSelect, "> " + queuedOpMode);
+			setTextView(textOpModeName, queuedOpMode);
 		}
 		setEnabled(this.buttonSelect, true);
 		setEnabled(this.buttonInit, true);
 		setEnabled(this.buttonStart, false);
-		//setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, true);
+		Log.d("OSDS UI Change", "uiWaitingForInitEvent()");
+
 	}
 
 	protected void uiWaitingForStartEvent() {
-		setButtonText(buttonSelect, "> " + queuedOpMode);
+		setTextView(textOpModeName, queuedOpMode);
 		setEnabled(this.buttonSelect, true);
 		setEnabled(this.buttonInit, false);
 		setEnabled(this.buttonStop, false);
 		setEnabled(this.buttonStartTimed, true);
 		setEnabled(this.buttonStart, true);
+		Log.d("OSDS UI Change", "uiWaitingForStartEvent()");
+
 	}
 
 	protected void uiWaitingForStopEvent()
 	{
-		setButtonText(buttonSelect, "Select");
+		setTextView(textOpModeName, "");
 		setEnabled(this.buttonSelect, true);
 		setEnabled(this.buttonStop, true);
 		setEnabled(this.buttonStart, false);
 		setEnabled(this.buttonInit, false);
 		setEnabled(this.buttonStartTimed, false);
 		setEnabled(this.buttonStart, false);
+		Log.d("OSDS UI Change", "uiWaitingForStopEvent()");
+
 	}
 
 
@@ -650,7 +681,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		pendingCommands.clear();
 		remoteAddr = null;
 
-		setTextView(textOpModeQueuedName, "");
+		setTextView(textRobotBatteryVoltage, getString(R.string.label_unknown_robot_battery));
 		setTextView(textOpModeName, "");
 		setTextView(buttonStop, getString(R.string.label_stop));
 		setTextView(textTelemetry, "");
