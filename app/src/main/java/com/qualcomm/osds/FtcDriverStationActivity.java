@@ -521,8 +521,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		assumeClientConnect();
 	}
 
-	protected void telemetryEvent(RobocolDatagram packet) {
-		StringBuilder telemetryStringBuilder = new StringBuilder();
+	protected void telemetryEvent(RobocolDatagram packet)
+	{
 		Telemetry telemetry;
 		SortedSet<String> keys;
 
@@ -535,6 +535,9 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		//parse out system telemetry messages
 		String tag = telemetry.getTag();
+
+		//Log.d("OSDS", "Telemetry Event Received: " + tag);
+
 		if (tag.equals(EventLoopManager.SYSTEM_TELEMETRY))
 		{
 			String errorMsg = telemetry.getDataStrings().get(telemetry.getTag());
@@ -565,30 +568,29 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		}
 		else
 		{
-		Map<String, String> strings = telemetry.getDataStrings();
-		keys = new TreeSet<String>(strings.keySet());
-		for (String key : keys)
-		{
-			if (showTelemetryKeys)
+			StringBuilder telemetryStringBuilder = new StringBuilder();
+			Map<String, String> strings = telemetry.getDataStrings();
+			keys = new TreeSet<String>(strings.keySet());
+			for (String key : keys)
 			{
-				telemetryStringBuilder.append(key);
-				telemetryStringBuilder.append(": ");
+				if (showTelemetryKeys)
+				{
+					telemetryStringBuilder.append(key);
+					telemetryStringBuilder.append(": ");
+				}
+				telemetryStringBuilder.append(strings.get(key));
+				telemetryStringBuilder.append('\n');
 			}
-			telemetryStringBuilder.append(strings.get(key));
-			telemetryStringBuilder.append('\n');
-		}
-		String telemetryString = telemetryStringBuilder.toString();
+			String telemetryString = telemetryStringBuilder.toString();
 
-		Map<String, Float> numbers = telemetry.getDataNumbers();
-		keys = new TreeSet<String>(numbers.keySet());
-		for (String key : keys)
-		{
-			telemetryString += key + ": " + numbers.get(key) + "\n";
+			Map<String, Float> numbers = telemetry.getDataNumbers();
+			keys = new TreeSet<String>(numbers.keySet());
+			for (String key : keys)
+			{
+				telemetryString += key + ": " + numbers.get(key) + "\n";
+			}
+			setTextView(textTelemetry, telemetryString);
 		}
-
-		//DbgLog.msg("TELEMETRY:\n" + telemetryString);
-		setTextView(textTelemetry, telemetryString);
-	}
 
   }
 
@@ -623,14 +625,19 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void uiWaitingForInitEvent()
 	{
-		if(!queuedOpMode.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
+		if(queuedOpMode.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
+		{
+			setEnabled(this.buttonInit, false);
+		}
+		else
 		{
 			setTextView(textOpModeName, queuedOpMode);
+			setEnabled(this.buttonInit, true);
 		}
 		setEnabled(this.buttonSelect, true);
-		setEnabled(this.buttonInit, true);
 		setEnabled(this.buttonStart, false);
-		setEnabled(this.buttonStartTimed, true);
+		setEnabled(this.buttonStartTimed, false);
+		setEnabled(this.buttonStop, false);
 		Log.d("OSDS UI Change", "uiWaitingForInitEvent()");
 
 	}
@@ -674,7 +681,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		opModeUseTimer = false;
 		opModeCountDown.stop();
-		queuedOpMode = "";
+		queuedOpMode = OpModeManager.DEFAULT_OP_MODE_NAME;
 		opModes.clear();
 
 		pingStatus("");
@@ -711,7 +718,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	}
 
 	protected void clearInfo() {
-		setTextView(this.textTelemetry, BuildConfig.VERSION_NAME);
+		setTextView(this.textTelemetry, "");
 	}
 
 	protected void handleOpModeInit() {

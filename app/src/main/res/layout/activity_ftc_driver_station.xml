@@ -90,7 +90,7 @@
     android:ellipsize="end"
     android:gravity="start|center_vertical"
     android:maxLines="1"
-    android:text="blkblblblblblbl"
+    android:text="Stop Robot"
     android:textAppearance="?android:attr/textAppearanceMedium"
     android:layout_below="@+id/batteryStatusLayout"
     android:layout_toEndOf="@+id/textOpModeLabel"/>
