@@ -4,7 +4,7 @@ android {
     signingConfigs {
     }
     compileSdkVersion 19
-    buildToolsVersion "22.0.1"
+    buildToolsVersion "23.0.1"
     defaultConfig {
         applicationId 'com.qualcomm.osds'
         minSdkVersion 17
@@ -34,5 +34,5 @@ dependencies {
     compile(name: 'FtcCommon-release', ext: 'aar')
     compile(name: 'WirelessP2p-release', ext: 'aar')
     compile(name: 'Analytics-release', ext: 'aar')
-    compile 'com.android.support:support-annotations:23.0.0'
+    compile 'com.android.support:support-annotations:19.0.0'
 }
