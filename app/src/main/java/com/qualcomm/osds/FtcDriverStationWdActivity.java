@@ -40,8 +40,10 @@ import android.view.MenuItem;
 import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.robocol.PeerDiscoveryManager;
 import com.qualcomm.robotcore.robocol.RobocolDatagramSocket;
+import com.qualcomm.robotcore.wifi.NetworkConnection;
 import com.qualcomm.robotcore.wifi.WifiDirectAssistant;
-import com.qualcomm.robotcore.wifi.WifiDirectAssistant.WifiDirectAssistantCallback;
+
+import org.firstinspires.ftc.robotcore.internal.network.CallbackResult;
 
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -50,13 +52,12 @@ import java.util.concurrent.Executors;
 /**
  * Wifi Direct (WD) version of the Driver Station
  */
-public class FtcDriverStationWdActivity extends FtcDriverStationActivity
-	implements WifiDirectAssistantCallback{
+public class FtcDriverStationWdActivity extends FtcDriverStationActivity implements NetworkConnection.NetworkConnectionCallback{
 
-  protected boolean clientConnected = false;
+	protected boolean clientConnected = false;
 
-  protected InetAddress remoteAddr;
-  protected WifiDirectAssistant wifiDirect;
+	protected InetAddress remoteAddr;
+	protected WifiDirectAssistant wifiDirect;
 	protected String groupOwnerMac;
 
 	protected boolean setupNeeded = true;
@@ -66,7 +67,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 	final static int AUTO_LAN_DS_REQUEST_CODE = 7;
 
 	@Override
-  protected void onCreate(Bundle savedInstanceState) {
+	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 
 
@@ -79,35 +80,35 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 		{
 			startActivity(new Intent(this, FtcPairWifiDirectActivity.class));
 		}
-  }
+	}
 
-  @Override
-  protected void onStart()
-  {
-	  super.onStart();
+	@Override
+	protected void onStart()
+	{
+		super.onStart();
 
-	  this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
+		this.groupOwnerMac = PreferenceManager.getDefaultSharedPreferences(this).getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
 
-	  if(preferences.getBoolean(PREF_USE_LAN_DS, false))
-	  {
-		  //automatically open the LAN DS
-		  startActivityForResult(new Intent(this, FtcDriverStationLanActivity.class), AUTO_LAN_DS_REQUEST_CODE);
-	  }
-	  else
-	  {
-		  wifiDirectStatus("Wifi Direct - Disconnected");
-		  this.wifiDirect.enable();
-		  if (!this.wifiDirect.isConnected())
-		  {
-			  this.wifiDirect.discoverPeers();
-		  } else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress()))
-		  {
-			  DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getGroupOwnerMacAddress() + ", expected " + this.groupOwnerMac);
-			  wifiDirectStatus("Error: Connected to wrong device");
-			  WifiDirectReconfigurer.reconfigureWifi(this);
-		  }
-	  }
-  }
+		if(preferences.getBoolean(PREF_USE_LAN_DS, false))
+		{
+			//automatically open the LAN DS
+			startActivityForResult(new Intent(this, FtcDriverStationLanActivity.class), AUTO_LAN_DS_REQUEST_CODE);
+		}
+		else
+		{
+			wifiDirectStatus("Wifi Direct - Disconnected");
+			this.wifiDirect.enable();
+			if (!this.wifiDirect.isConnected())
+			{
+				this.wifiDirect.discoverPeers();
+			} else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getConnectionOwnerMacAddress()))
+			{
+				DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getConnectionOwnerMacAddress() + ", expected " + this.groupOwnerMac);
+				wifiDirectStatus("Error: Connected to wrong device");
+				WifiDirectReconfigurer.reconfigureWifi(this);
+			}
+		}
+	}
 
 	@Override
 	protected void shutdown()
@@ -124,16 +125,16 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 		this.setupNeeded = true;
 	}
 
-  @Override
-  protected void onPause() {
+	@Override
+	protected void onPause() {
 	super.onPause();
-  }
+	}
 
-  @Override
-  protected void onStop() {
+	@Override
+	protected void onStop() {
 		super.onStop();
 		wifiDirect.disable();
-  }
+	}
 
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
@@ -167,11 +168,11 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 		}
 	}
 
-	public void onWifiDirectEvent(WifiDirectAssistant.Event event) {
+	//JS- I'm not sure what the difference is between CallbackResult.HANDLED, and CallbackResult.HANDLED_CONTINUE
+	public CallbackResult onNetworkConnectionEvent(WifiDirectAssistant.Event event) {
 		String msg;
-		switch (event)
-		{
-		  case PEERS_AVAILABLE:
+		switch (event) {
+			case PEERS_AVAILABLE:
 				if (this.wifiDirect.getConnectStatus() != WifiDirectAssistant.ConnectStatus.CONNECTED && this.wifiDirect.getConnectStatus() != WifiDirectAssistant.ConnectStatus.CONNECTING) {
 					if (this.groupOwnerMac.equals(getString(R.string.pref_driver_station_mac_default))) {
 						wifiDirectStatus("Not Paired");
@@ -179,79 +180,94 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity
 						wifiDirectStatus("Searching");
 					}
 					for (WifiP2pDevice peer : this.wifiDirect.getPeers()) {
-						if (peer.deviceAddress.equalsIgnoreCase(this.groupOwnerMac))
-						{
-							this.wifiDirect.connect(peer);
-							return;
+						if (peer.deviceAddress.equalsIgnoreCase(this.groupOwnerMac)) {
+							this.wifiDirect.connect(peer.deviceAddress);
+							return CallbackResult.HANDLED;
 						}
 					}
 				}
+				break;
 			case GROUP_CREATED:
 				DbgLog.error("Wifi Direct - connected as Group Owner, was expecting Peer");
 				wifiDirectStatus("Error: Connected as Group Owner");
-				//WifiDirectReconfigurer.reconfigureWifi(this);
-		  case CONNECTING:
+				WifiDirectReconfigurer.reconfigureWifi(this);
+				return CallbackResult.HANDLED;
+
+			case CONNECTING:
 				wifiDirectStatus("Connecting");
 				this.wifiDirect.cancelDiscoverPeers();
+				return CallbackResult.HANDLED;
+
 			case CONNECTED_AS_PEER:
-				this.wifiDirect.cancelDiscoverPeers();
-				wifiDirectStatus("Connected");
 			case CONNECTED_AS_GROUP_OWNER:
-				wifiDirectStatus(getString(R.string.check_connected_to) + " " + this.wifiDirect.getGroupOwnerName());
-				if (this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getGroupOwnerMacAddress())) {
+
+				DbgLog.msg("Connected...");
+				this.wifiDirect.cancelDiscoverPeers();
+				if (this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getConnectionOwnerMacAddress())) {
+					wifiDirectStatus("Connected");
+
+					wifiDirectStatus(getString(R.string.check_connected_to) + " " + this.wifiDirect.getGroupOwnerName());
 					synchronized (this) {
 						if (this.wifiDirect.isConnected() && this.setupNeeded) {
 							this.setupNeeded = false;
 							new Thread(new SetupRunnable()).start();
 						}
-						break;
 					}
+					return CallbackResult.HANDLED;
 				}
-				DbgLog.error("Wifi Direct - connected to \"" + this.wifiDirect.getGroupOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
-				wifiDirectStatus("Error: Connected to wrong device");
-				//WifiDirectReconfigurer.reconfigureWifi(this);
+				else
+				{
+					DbgLog.error("Wifi Direct - connected to \"" + this.wifiDirect.getConnectionOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
+					wifiDirectStatus("Error: Connected to wrong device");
+					WifiDirectReconfigurer.reconfigureWifi(this);
+					return CallbackResult.HANDLED;
+				}
+
 			case DISCONNECTED:
 				msg = "Disconnected";
 				wifiDirectStatus(msg);
 				DbgLog.msg("Wifi Direct - " + msg);
 				this.wifiDirect.discoverPeers();
+				return CallbackResult.HANDLED;
 			case ERROR:
-				if(wifiDirect.getFailureReason().equals("BUSY"))
-				{
+				if (wifiDirect.getFailureReason().equals("BUSY")) {
 					msg = "Waiting to Connect";
-				}
-				else
-				{
+				} else {
 					msg = "Error: " + this.wifiDirect.getFailureReason();
 				}
 				wifiDirectStatus(msg);
 				DbgLog.msg("Wifi Direct - " + msg);
-			default:
+				return CallbackResult.HANDLED;
 		}
+
+		return CallbackResult.NOT_HANDLED;
 	}
 
 	protected class SetupRunnable implements Runnable {
 		@Override
 		public void run() {
+			InetAddress groupOwnerAddr = FtcDriverStationWdActivity.this.wifiDirect.getGroupOwnerAddress();
+
 			try {
 				if (FtcDriverStationWdActivity.this.socket != null) {
 					FtcDriverStationWdActivity.this.socket.close();
 				}
+
+
 				FtcDriverStationWdActivity.this.socket = new RobocolDatagramSocket();
-				FtcDriverStationWdActivity.this.socket.listen(FtcDriverStationWdActivity.this.wifiDirect.getGroupOwnerAddress());
-				FtcDriverStationWdActivity.this.socket.connect(FtcDriverStationWdActivity.this.wifiDirect.getGroupOwnerAddress());
+				FtcDriverStationWdActivity.this.socket.listenUsingDestination(groupOwnerAddr);
+				FtcDriverStationWdActivity.this.socket.connect(groupOwnerAddr);
 			} catch (SocketException e) {
 				DbgLog.error("Failed to open socket: " + e.toString());
 			}
 			if (FtcDriverStationWdActivity.this.peerDiscoveryManager != null) {
 				FtcDriverStationWdActivity.this.peerDiscoveryManager.stop();
 			}
-			FtcDriverStationWdActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationWdActivity.this.socket);
-			FtcDriverStationWdActivity.this.peerDiscoveryManager.start(FtcDriverStationWdActivity.this.wifiDirect.getGroupOwnerAddress());
+			FtcDriverStationWdActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationWdActivity.this.socket, groupOwnerAddr);
 			FtcDriverStationWdActivity.this.recvLoopService = Executors.newSingleThreadExecutor();
 			FtcDriverStationWdActivity.this.recvLoopService.execute(new RecvLoopRunnable());
 			DbgLog.msg("Setup complete");
 		}
 	}
-  
+
 }

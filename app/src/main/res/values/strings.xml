@@ -41,26 +41,8 @@
     <string name="pref_show_telemetry_keys_description">Show the keys of telemetry data infront of their values.</string>
 
 
-    <!-- Wifi Channel Selector -->
-    <string-array name="wifi_direct_channels">
-    <item>SELECT A CHANNEL</item>
-    <item>Class 81 Channel 1</item>
-    <item>Class 81 Channel 6</item>
-    <item>Class 81 Channel 11</item>
-    <!--
-    <item>Class 115 Channel 36</item>
-    <item>Class 115 Channel 40</item>
-    <item>Class 115 Channel 44</item>
-    <item>Class 115 Channel 48</item>
-    -->
-    <item>Class 124 Channel 149</item>
-    <item>Class 124 Channel 153</item>
-    <item>Class 124 Channel 157</item>
-    <item>Class 124 Channel 161</item>
-    </string-array>
 
-    <string name="configure_settings">Configure WiFi Direct</string>
-    <string name="launch_wifi_settings">Launch WiFi Settings</string>
+
     <string name="restore_settings">Restore Saved WiFi Settings</string>
 
     <string name="label_current_op_mode">current op mode:</string>
@@ -87,9 +69,7 @@
     <string name="wd_driver_station">Wifi Direct Driver Station</string>
     <string name="lan_driver_station">LAN Driver Station</string>
     <string name="check_connected_to">✅ Connected to</string>
-    <string name="channel_change_explanation">Note that the channel set on the Robot Controller is the one that will be used for communications. This facility
-        is provided mainly because it regenerates the Wifi Direct config files, so it may be able to fix issues caused by these files being broken.  Note that
-        changing channels requires root access.</string>
+
     <string name="set_ip_menu_item">Set IP Address</string>
     <string name="switch_to_wifi_direct_menu_item">Switch to Wifi Direct</string>
     <string name="switch_to_lan_menu_item">Switch to LAN</string>

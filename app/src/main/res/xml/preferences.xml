@@ -30,7 +30,7 @@
             android:key="@string/pref_show_telemetry_keys_key"
             android:title="@string/pref_show_telemetry_keys_title"
             android:summary="@string/pref_show_telemetry_keys_description"
-            android:defaultValue="true"/>
+            android:defaultValue="false"/>
 
     </PreferenceCategory>
 

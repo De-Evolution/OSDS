@@ -33,7 +33,6 @@ package com.qualcomm.osds;
 import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
 import android.util.Patterns;
@@ -159,10 +158,10 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 		}
 		else
 		{
-			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preferences is not valid!");
+			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preference is not valid!");
 		}
 	}
-	
+
 	protected class SetupRunnable implements Runnable {
 		@Override
 		public void run() {
@@ -173,7 +172,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 					FtcDriverStationLanActivity.this.socket.close();
 				}
 				FtcDriverStationLanActivity.this.socket = new RobocolDatagramSocket();
-				FtcDriverStationLanActivity.this.socket.listen(robotControllerAddress);
+				FtcDriverStationLanActivity.this.socket.listenUsingDestination(robotControllerAddress);
 				FtcDriverStationLanActivity.this.socket.connect(robotControllerAddress);
 			}
 			catch (SocketException e) {
@@ -184,8 +183,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 			if (FtcDriverStationLanActivity.this.peerDiscoveryManager != null) {
 				FtcDriverStationLanActivity.this.peerDiscoveryManager.stop();
 			}
-			FtcDriverStationLanActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationLanActivity.this.socket);
-			FtcDriverStationLanActivity.this.peerDiscoveryManager.start(robotControllerAddress);
+			FtcDriverStationLanActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationLanActivity.this.socket, robotControllerAddress);
 			FtcDriverStationLanActivity.this.recvLoopService = Executors.newSingleThreadExecutor();
 			FtcDriverStationLanActivity.this.recvLoopService.execute(new RecvLoopRunnable());
 			DbgLog.msg("Setup complete");

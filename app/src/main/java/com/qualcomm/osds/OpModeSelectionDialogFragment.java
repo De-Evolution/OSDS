@@ -37,42 +37,40 @@ import android.app.DialogFragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
 
-import com.qualcomm.osds.R;
-
 /**
  * Dialog fragment for selecting op modes
  */
 public class OpModeSelectionDialogFragment extends DialogFragment {
 
-  public interface OpModeSelectionDialogListener {
-    public void onSelectionClick(String selection);
-  }
+	public interface OpModeSelectionDialogListener {
+		public void onSelectionClick(int selectionIndex);
+	}
 
-  private String[] opModes = new String[0];
-  private OpModeSelectionDialogListener listener = null;
+	private String[] opModes = new String[0];
+	private OpModeSelectionDialogListener listener = null;
 
-  public void setOpModes(String[] opModes) {
-    this.opModes = opModes;
-  }
+	public void setOpModes(String[] opModes) {
+	this.opModes = opModes;
+	}
 
-  public void setOnSelectionDialogListener(OpModeSelectionDialogListener listener) {
-    this.listener = listener;
-  }
+	public void setOnSelectionDialogListener(OpModeSelectionDialogListener listener) {
+		this.listener = listener;
+	}
 
-  @Override
-  public Dialog onCreateDialog(Bundle savedInstanceState) {
-    AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+	@Override
+	public Dialog onCreateDialog(Bundle savedInstanceState) {
+		AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
 
-    builder.setTitle(R.string.dialog_title_select_op_mode);
+		builder.setTitle(R.string.dialog_title_select_op_mode);
 
-    builder.setItems(opModes, new DialogInterface.OnClickListener() {
-      @Override
-      public void onClick(DialogInterface dialogInterface, int selectionIndex) {
-        if (listener != null) listener.onSelectionClick(opModes[selectionIndex]);
-      }
-    });
+		builder.setItems(opModes, new DialogInterface.OnClickListener() {
+			@Override
+			public void onClick(DialogInterface dialogInterface, int selectionIndex) {
+			if (listener != null) listener.onSelectionClick(selectionIndex);
+			}
+		});
 
-    return builder.create();
-  }
+		return builder.create();
+	}
 
 }

@@ -1,14 +1,11 @@
 package com.qualcomm.osds;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.util.Patterns;
 import android.view.View;
 import android.widget.Button;
@@ -119,7 +116,7 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 			try
 			{
 				//for some reason, this takes a long time
-				//it's not supposed to.  More investigation is needed.
+				//it's not supposed to.	More investigation is needed.
 				pingerThread.join();
 			}
 			catch (InterruptedException e)
@@ -167,7 +164,7 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 				//since it is accessed from an inner class, reachable needs to be final.
 				//but, it also needs to be set from within a try-catch block, so it can't be.
 				//so, we just make another boolean which IS final and assign reachable to it.
-				//Sigh...  java, java
+				//Sigh...	java, java
 				final boolean pingable = reachable;
 
 				//user changed the text

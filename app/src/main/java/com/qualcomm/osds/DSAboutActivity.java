@@ -38,7 +38,6 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.qualcomm.osds.R;
 import com.qualcomm.robotcore.util.Version;
 
 /**
@@ -46,57 +45,57 @@ import com.qualcomm.robotcore.util.Version;
  */
 
 // public class About extends PreferenceActivity
-public class AboutActivity extends Activity {
-  /** Called when the activity is first created. */
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
-    super.onCreate(savedInstanceState);
-    // addPreferencesFromResource( R.layout.about );
-    setContentView(R.layout.about);
+public class DSAboutActivity extends Activity {
+	/** Called when the activity is first created. */
+	@Override
+	protected void onCreate(Bundle savedInstanceState) {
+	super.onCreate(savedInstanceState);
+	// addPreferencesFromResource( R.layout.about );
+	setContentView(R.layout.about);
 
-    ListView aboutList = (ListView) findViewById(R.id.aboutList);
+	ListView aboutList = (ListView) findViewById(R.id.aboutList);
 
-    ArrayAdapter<String[]> adapter =
-        new ArrayAdapter<String[]>(this, android.R.layout.simple_list_item_2, android.R.id.text1) {
-          @Override
-          public View getView(int position, View convertView, ViewGroup parent) {
-            View view = super.getView(position, convertView, parent);
-            TextView topLine = (TextView) view.findViewById(android.R.id.text1);
-            TextView bottomLine = (TextView) view.findViewById(android.R.id.text2);
+	ArrayAdapter<String[]> adapter =
+		new ArrayAdapter<String[]>(this, android.R.layout.simple_list_item_2, android.R.id.text1) {
+			@Override
+			public View getView(int position, View convertView, ViewGroup parent) {
+			View view = super.getView(position, convertView, parent);
+			TextView topLine = (TextView) view.findViewById(android.R.id.text1);
+			TextView bottomLine = (TextView) view.findViewById(android.R.id.text2);
 
-            String[] item = getItem(position);
-            if (item.length == 2) {
-              topLine.setText(item[0]);
-              bottomLine.setText(item[1]);
-            }
+			String[] item = getItem(position);
+			if (item.length == 2) {
+				topLine.setText(item[0]);
+				bottomLine.setText(item[1]);
+			}
 
-            return view;
-          }
+			return view;
+			}
 
-          @Override
-          public int getCount() {
-            return 2;
-          }
+			@Override
+			public int getCount() {
+			return 2;
+			}
 
-          @Override
-          public String[] getItem(int pos) {
-            String[] rc = new String[2];
-            if (pos == 0) {
-              try {
-                rc[0] = "OSDS Version";
-                rc[1] =
-                    AboutActivity.this.getPackageManager().getPackageInfo(
-                        AboutActivity.this.getPackageName(), 0).versionName;
-              } catch (android.content.pm.PackageManager.NameNotFoundException e) {
-              }
-            } else if (pos == 1) {
-              rc[0] = "Library Version";
-              rc[1] = Version.getLibraryVersion();
-            }
-            return rc;
-          }
-        };
+			@Override
+			public String[] getItem(int pos) {
+			String[] rc = new String[2];
+			if (pos == 0) {
+				try {
+				rc[0] = "OSDS Version";
+				rc[1] =
+					DSAboutActivity.this.getPackageManager().getPackageInfo(
+						DSAboutActivity.this.getPackageName(), 0).versionName;
+				} catch (android.content.pm.PackageManager.NameNotFoundException e) {
+				}
+			} else if (pos == 1) {
+				rc[0] = "Library Version";
+				rc[1] = Version.getLibraryVersion();
+			}
+			return rc;
+			}
+		};
 
-    aboutList.setAdapter(adapter);
-  }
+	aboutList.setAdapter(adapter);
+	}
 }
