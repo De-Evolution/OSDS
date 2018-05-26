@@ -43,7 +43,6 @@ import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.SystemClock;
 import android.preference.PreferenceManager;
-import android.support.annotation.NonNull;
 import android.util.Log;
 import android.view.InputEvent;
 import android.view.KeyEvent;
@@ -60,18 +59,14 @@ import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-import com.qualcomm.analytics.Analytics;
 import com.qualcomm.ftccommon.CommandList;
-import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.ftccommon.FtcEventLoopHandler;
 import com.qualcomm.hardware.logitech.LogitechGamepadF310;
 import com.qualcomm.hardware.microsoft.MicrosoftGamepadXbox360;
 import com.qualcomm.robotcore.eventloop.EventLoopManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
-import com.qualcomm.robotcore.eventloop.opmode.OpModeMeta;
 import com.qualcomm.robotcore.exception.RobotCoreException;
 import com.qualcomm.robotcore.hardware.Gamepad;
-import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.robocol.Command;
 import com.qualcomm.robotcore.robocol.Heartbeat;
 import com.qualcomm.robotcore.robocol.PeerDiscoveryManager;
@@ -82,6 +77,9 @@ import com.qualcomm.robotcore.robot.RobotState;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.util.RollingAverage;
+
+import org.firstinspires.ftc.robotcore.internal.opmode.OpModeMeta;
+import org.firstinspires.ftc.robotcore.internal.ui.GamepadUser;
 
 import java.lang.reflect.Type;
 import java.net.InetAddress;
@@ -120,9 +118,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	protected String startTimedDefaultText;
 
 	@SuppressLint("UseSparseArrays")
-	protected Map<Integer, Gamepad> gamepads = new HashMap<Integer, Gamepad>();
-	@SuppressLint("UseSparseArrays")
-	protected Map<Integer, Integer> userToGamepadMap = new HashMap<Integer, Integer>();
+	protected Map<Integer, Gamepad> gamepads = new HashMap<>();
+	protected Map<GamepadUser, Integer> userToGamepadMap = new HashMap<>(); // maps user to OS id of gamepad
 
 	protected Heartbeat heartbeatSend = new Heartbeat();
 	protected Heartbeat heartbeatRecv = new Heartbeat();
@@ -146,9 +143,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	protected ElapsedTime lastRecvPacket = new ElapsedTime();
 
 	protected Set<Command> pendingCommands = Collections.newSetFromMap(new ConcurrentHashMap<Command, Boolean>());
-
-	protected Analytics analytics;
-
+	
 	protected TextView textWifiDirectStatus;
 	protected TextView textPingStatus;
 	protected TextView textRCBatteryPercent;
@@ -209,7 +204,6 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		showTelemetryKeys = preferences.getBoolean(getString(R.string.pref_show_telemetry_keys_key), true);
 
-		RobotLog.writeLogcatToDisk(this, 1024);
 
 		pixelFont = Typeface.createFromAsset(getAssets(), "fonts/Minecraftia-Regular.ttf");
 		startTimedDefaultText = getString(R.string.label_start_timed);
@@ -218,9 +212,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		user2ScaleAnimation = animateAddController(textuser2);
 
 		preferences.registerOnSharedPreferenceChangeListener(this);
-
-		analytics = new Analytics(this.context, Analytics.DS_COMMAND_STRING, new HardwareMap(this));
-
+		
 		textOpModeName.setText("---");
 	}
 
@@ -229,24 +221,21 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	{
 		super.onStart();
 		assumeClientDisconnect();
-		RobotLog.writeLogcatToDisk(this, MAX_LOG_SIZE);
+		RobotLog.onApplicationStart();
 
-
-		DbgLog.msg("App Started");
+		RobotLog.i("App Started");
 	}
 
 	@Override
 	protected void onResume()
 	{
 		super.onResume();
-		this.analytics.register();
 	}
 
 	@Override
 	protected void onPause()
 	{
 		super.onPause();
-		this.analytics.unregister();
 	}
 
 	@Override
@@ -256,8 +245,8 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		// close the old event loops
 		shutdown();
 
-		DbgLog.msg("App Stopped");
-		RobotLog.cancelWriteLogcatToDisk(this);
+		RobotLog.i("App Stopped");
+		RobotLog.cancelWriteLogcatToDisk();
 	}
 
 	//found http://stackoverflow.com/questions/23695626/making-textview-loop-a-growing-and-shrinking-animation
@@ -324,7 +313,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 				Toast.makeText(context, msg, duration).show();
 			}
 		});
-		DbgLog.msg(msg);
+		RobotLog.i(msg);
 	}
 
 	@Override
@@ -380,7 +369,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	}
 
 	@Override
-	public boolean dispatchKeyEvent(@NonNull KeyEvent event)
+	public boolean dispatchKeyEvent(KeyEvent event)
 	{
 		if(Gamepad.isGamepadDevice(event.getDeviceId()))
 		{
@@ -505,7 +494,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		}
 		catch(RobotCoreException e)
 		{
-			DbgLog.logStacktrace(e);
+			RobotLog.logStacktrace(e);
 		}
 	}
 
@@ -522,40 +511,40 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 			}
 
 			// we are to handle this command
-			DbgLog.msg(" processing command: " + command.getName());
+			RobotLog.i(" processing command: " + command.getName());
 			command.acknowledge();
 			pendingCommands.add(command);
 
 			String name = command.getName();
 			String extra = command.getExtra();
 
-			DbgLog.msg(name);
+			RobotLog.i(name);
 
-			if(name.equals(CommandList.CMD_REQUEST_OP_MODE_LIST_RESP))
+			if(name.equals(CommandList.CMD_NOTIFY_OP_MODE_LIST))
 			{
 				handleCommandRequestOpModeListResp(extra);
 			}
-			else if(name.equals(CommandList.CMD_INIT_OP_MODE_RESP))
+			else if(name.equals(CommandList.CMD_NOTIFY_INIT_OP_MODE))
 			{
 				handleCommandInitOpModeResp(extra);
 			}
-			else if(name.equals(CommandList.CMD_RUN_OP_MODE_RESP))
+			else if(name.equals(CommandList.CMD_NOTIFY_RUN_OP_MODE))
 			{
 				handleCommandStartOpModeResp(extra);
 			}
-			else if(name.equals(CommandList.CMD_SUGGEST_OP_MODE_LIST_REFRESH))
-			{
-				handleCommandSuggestOpModeRefresh(extra);
-			}
+			//else if(name.equals(CommandList.CMD_SUGGEST_OP_MODE_LIST_REFRESH))
+			//{
+			//	handleCommandSuggestOpModeRefresh(extra);
+			//}
 			else
 			{
-				DbgLog.msg("Unable to process command " + name);
+				RobotLog.i("Unable to process command " + name);
 			}
 
 		}
 		catch(RobotCoreException e)
 		{
-			DbgLog.logStacktrace(e);
+			RobotLog.logStacktrace(e);
 		}
 	}
 
@@ -569,7 +558,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		// update remoteAddr with latest address
 		remoteAddr = packet.getAddress();
-		DbgLog.msg("new remote peer discovered: " + remoteAddr.getHostAddress());
+		RobotLog.i("new remote peer discovered: " + remoteAddr.getHostAddress());
 
 		try
 		{
@@ -577,7 +566,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		}
 		catch(SocketException e)
 		{
-			DbgLog.error("Unable to connect to peer:" + e.toString());
+			RobotLog.e("Unable to connect to peer:" + e.toString());
 		}
 
 		// start send loop, if needed
@@ -600,7 +589,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		}
 		catch(RobotCoreException e)
 		{
-			DbgLog.logStacktrace(e);
+			RobotLog.logStackTrace(e);
 			return;
 		}
 
@@ -612,7 +601,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		if(tag.equals(EventLoopManager.SYSTEM_ERROR_KEY))
 		{
 			String errorMsg = message.getDataStrings().get(message.getTag());
-			DbgLog.error("System Errror Telemetry: " + errorMsg);
+			RobotLog.e("System Errror Telemetry: " + errorMsg);
 			RobotLog.setGlobalErrorMsg(errorMsg);
 			setTextView(textTelemetry, "Robot is hosed. To recover, please restart it. Error: " + errorMsg);
 			uiRobotNeedsRestart();
@@ -620,7 +609,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		if(tag.equals(EventLoopManager.SYSTEM_WARNING_KEY))
 		{
 			String warnMsg = message.getDataStrings().get(message.getTag());
-			DbgLog.error("System Warning Telemetry: " + warnMsg);
+			RobotLog.e("System Warning Telemetry: " + warnMsg);
 			setTextView(textWifiDirectStatus, "Robot warning: " + warnMsg);
 		}
 		if(tag.equals(EventLoopManager.SYSTEM_NONE_KEY))
@@ -628,16 +617,16 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 			//print nothing
 			setTextView(textTelemetry, "");
 		}
-		else if(tag.equals(EventLoopManager.RC_BATTERY_LEVEL_KEY))
+		else if(tag.equals(EventLoopManager.RC_BATTERY_STATUS_KEY))
 		{
 			String percent = message.getDataStrings().get(message.getTag());
-			DbgLog.msg("RC battery Telemetry event: " + percent);
+			RobotLog.i("RC battery Telemetry event: " + percent);
 			setTextView(textRCBatteryPercent, percent + "%");
 		}
 		else if(tag.equals(EventLoopManager.ROBOT_BATTERY_LEVEL_KEY))
 		{
 			String voltage = message.getDataStrings().get(message.getTag());
-			DbgLog.msg("Robot Battery Telemetry event: " + voltage);
+			RobotLog.i("Robot Battery Telemetry event: " + voltage);
 
 			if(voltage.equals(FtcEventLoopHandler.NO_VOLTAGE_SENSOR))
 			{
@@ -761,16 +750,16 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void assumeClientConnect()
 	{
-		DbgLog.msg("Assuming client connected");
+		RobotLog.i("Assuming client connected");
 		clientConnected = true;
 		uiWaitingForOpModeSelection();
 		// request a list of available op modes
-		pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
+		pendingCommands.add(new Command(CommandList.CMD_REQUEST_UI_STATE));
 	}
 
 	protected void assumeClientDisconnect()
 	{
-		DbgLog.msg("Assuming client disconnected");
+		RobotLog.i("Assuming client disconnected");
 		clientConnected = false;
 
 		opModeUseTimer = false;
@@ -839,14 +828,14 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	{
 		opModes = new Gson().fromJson(extra, listOfOpmodeMetaType);
 
-		DbgLog.msg("Received the following op modes: " + opModes.toString());
+		RobotLog.i("Received the following op modes: " + opModes.toString());
 		pendingCommands.add(new Command(CommandList.CMD_INIT_OP_MODE, OpModeManager.DEFAULT_OP_MODE_NAME));
 		uiWaitingForOpModeSelection();
 	}
 
 	protected void handleCommandInitOpModeResp(String extra)
 	{
-		DbgLog.msg("Robot Controller initializing op mode: " + extra);
+		RobotLog.i("Robot Controller initializing op mode: " + extra);
 		if(!extra.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
 		{
 			uiWaitingForStartEvent();
@@ -864,7 +853,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void handleCommandStartOpModeResp(String extra)
 	{
-		DbgLog.msg("Robot Controller starting op mode: " + extra);
+		RobotLog.i("Robot Controller starting op mode: " + extra);
 		if(!extra.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
 		{
 			uiWaitingForStopEvent();
@@ -878,9 +867,9 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 	//this seems to be sent after the robot is restarted
 	protected void handleCommandSuggestOpModeRefresh(String extra)
 	{
-		DbgLog.msg("Refreshing opmode list as requested...");
+		RobotLog.i("Refreshing opmode list as requested...");
 		uiWaitingForOpModeSelection();
-		pendingCommands.add(new Command(CommandList.CMD_REQUEST_OP_MODE_LIST));
+		pendingCommands.add(new Command(CommandList.CMD_NOTIFY_OP_MODE_LIST));
 	}
 
 	protected void wifiDirectStatus(final String status)
@@ -969,15 +958,15 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		info = info.substring(0, 20) + "\n" + info.substring(20, 40) + "\n" + info.substring(40, 57) + "\n" + info.substring(58);
 		info = String.format(Locale.US, "Gamepad detected as %s (ID %d)", gamepads.get(event.getDeviceId()).type(), event.getDeviceId()) + "\n" + info;
 
-		for(Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet())
+		for(Map.Entry<GamepadUser, Integer> entry : userToGamepadMap.entrySet())
 		{
 			if(entry.getValue() == event.getDeviceId())
 			{
-				if(entry.getKey() == 1)
+				if(entry.getKey() == GamepadUser.ONE)
 				{
 					animateInfo(textuser1, info, Color.argb(255, 0, 255, 144));
 				}
-				if(entry.getKey() == 2)
+				else if(entry.getKey() == GamepadUser.TWO)
 				{
 					animateInfo(textuser2, info, Color.argb(255, 0, 111, 255));
 				}
@@ -1008,30 +997,30 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		if(gamepad.start && (gamepad.a || gamepad.b))
 		{
-			int user;
+			GamepadUser user;
 			if(gamepad.a)
 			{
-				user = 1;
+				user = GamepadUser.ONE;
 			} else
 			{
-				user = 2;
+				user = GamepadUser.TWO;
 			}
 			assignNewGamepad(user, event.getDeviceId());
 		}
 	}
 
-	protected void initGamepad(int user, int gamepadId)
+	protected void initGamepad(GamepadUser user, int gamepadId)
 	{
 		String key = "";
 
 		switch(user)
 		{
 			// TODO: different pref for user 1 and 2
-			case 1:
+			case ONE:
 				key = getString(R.string.pref_gamepad_type_key);
 				unanimateAddController(textuser1, user1ScaleAnimation);
 				break;
-			case 2:
+			case TWO:
 				key = getString(R.string.pref_gamepad_type_key);
 				unanimateAddController(textuser2, user2ScaleAnimation);
 				break;
@@ -1058,21 +1047,21 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		gamepads.put(gamepadId, gamepad);
 	}
 
-	protected void assignNewGamepad(int user, int gamepadId)
+	protected void assignNewGamepad(GamepadUser user, int gamepadId)
 	{
 
 		// search for duplicates and remove
-		Set<Integer> duplicates = new HashSet<Integer>();
-		for(Map.Entry<Integer, Integer> entry : userToGamepadMap.entrySet())
+		Set<GamepadUser> duplicates = new HashSet<>();
+		for(Map.Entry<GamepadUser, Integer> entry : userToGamepadMap.entrySet())
 		{
 			if(entry.getValue() == gamepadId)
 			{
 				duplicates.add(entry.getKey());
 			}
 		}
-		for(Integer i : duplicates)
+		for(GamepadUser keyToRemove : duplicates)
 		{
-			userToGamepadMap.remove(i);
+			userToGamepadMap.remove(keyToRemove);
 		}
 
 		// add user to mapping and init gamepad
@@ -1080,7 +1069,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 		initGamepad(user, gamepadId);
 
 		String msg = String.format(Locale.US, "Gamepad %d detected as %s (ID %d)", user, gamepads.get(gamepadId).type(), gamepadId);
-		DbgLog.msg(msg);
+		RobotLog.i(msg);
 	}
 
 
@@ -1115,14 +1104,14 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 				}
 
 				// send gamepads
-				for(Map.Entry<Integer, Integer> userEntry : userToGamepadMap.entrySet())
+				for(Map.Entry<GamepadUser, Integer> userEntry : userToGamepadMap.entrySet())
 				{
 
-					int user = userEntry.getKey();
+					GamepadUser user = userEntry.getKey();
 					int id = userEntry.getValue();
 
 					Gamepad gamepad = gamepads.get(id);
-					gamepad.user = (byte) user;
+					gamepad.setUser(user);
 
 					// don't send stale gamepads
 					if(now - gamepad.timestamp > GAMEPAD_UPDATE_THRESHOLD && gamepad.atRest())
@@ -1154,7 +1143,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 					// log commands we initiated
 					if(!command.isAcknowledged())
 					{
-						DbgLog.msg("	sending command: " + command.getName() + ", attempt: " + command.getAttempts());
+						RobotLog.i("	sending command: " + command.getName() + ", attempt: " + command.getAttempts());
 					}
 
 					// send the command
@@ -1210,7 +1199,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 						telemetryEvent(packet);
 						break;
 					default:
-						DbgLog.msg("Unhandled message type: " + packet.getMsgType().name());
+						RobotLog.i("Unhandled message type: " + packet.getMsgType().name());
 						break;
 				}
 			}
@@ -1241,13 +1230,13 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 				{
 					long timeRemainingInSeconds = timeRemaining / OpModeCountDownTimer.TICK;
 					setButtonText(buttonStartTimed, String.valueOf(timeRemainingInSeconds));
-					DbgLog.msg("Running current op mode for " + timeRemainingInSeconds + " seconds");
+					RobotLog.i("Running current op mode for " + timeRemainingInSeconds + " seconds");
 				}
 
 				public void onFinish()
 				{
 					OpModeCountDownTimer.this.running = false;
-					DbgLog.msg("Stopping current op mode, timer expired");
+					RobotLog.i("Stopping current op mode, timer expired");
 					setCountdown(OpModeCountDownTimer.COUNTDOWN_INTERVAL);
 					setButtonText(buttonStartTimed, startTimedDefaultText);
 					//setImageResource(FtcDriverStationActivity.this.buttonStartTimed, R.drawable.icon_timeroff);
@@ -1276,7 +1265,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 		public void start()
 		{
-			DbgLog.msg("Running current op mode for " + getTimeRemainingInSeconds() + " seconds");
+			RobotLog.i("Running current op mode for " + getTimeRemainingInSeconds() + " seconds");
 			this.running = true;
 			FtcDriverStationActivity.this.runOnUiThread(new TimerInstantiator());
 		}
@@ -1286,7 +1275,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 			if(this.running)
 			{
 				this.running = false;
-				DbgLog.msg("Stopping current op mode timer");
+				RobotLog.i("Stopping current op mode timer");
 				if(this.timer != null)
 				{
 					this.timer.cancel();

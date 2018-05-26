@@ -37,9 +37,9 @@ import android.preference.PreferenceManager;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.robocol.PeerDiscoveryManager;
 import com.qualcomm.robotcore.robocol.RobocolDatagramSocket;
+import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.wifi.NetworkConnection;
 import com.qualcomm.robotcore.wifi.WifiDirectAssistant;
 
@@ -103,7 +103,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 				this.wifiDirect.discoverPeers();
 			} else if (!this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getConnectionOwnerMacAddress()))
 			{
-				DbgLog.error("Wifi Direct - connected to " + this.wifiDirect.getConnectionOwnerMacAddress() + ", expected " + this.groupOwnerMac);
+				RobotLog.e("Wifi Direct - connected to " + this.wifiDirect.getConnectionOwnerMacAddress() + ", expected " + this.groupOwnerMac);
 				wifiDirectStatus("Error: Connected to wrong device");
 				WifiDirectReconfigurer.reconfigureWifi(this);
 			}
@@ -168,7 +168,6 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 		}
 	}
 
-	//JS- I'm not sure what the difference is between CallbackResult.HANDLED, and CallbackResult.HANDLED_CONTINUE
 	public CallbackResult onNetworkConnectionEvent(WifiDirectAssistant.Event event) {
 		String msg;
 		switch (event) {
@@ -188,7 +187,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 				}
 				break;
 			case GROUP_CREATED:
-				DbgLog.error("Wifi Direct - connected as Group Owner, was expecting Peer");
+				RobotLog.e("Wifi Direct - connected as Group Owner, was expecting Peer");
 				wifiDirectStatus("Error: Connected as Group Owner");
 				WifiDirectReconfigurer.reconfigureWifi(this);
 				return CallbackResult.HANDLED;
@@ -201,7 +200,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 			case CONNECTED_AS_PEER:
 			case CONNECTED_AS_GROUP_OWNER:
 
-				DbgLog.msg("Connected...");
+				RobotLog.e("Connected...");
 				this.wifiDirect.cancelDiscoverPeers();
 				if (this.groupOwnerMac.equalsIgnoreCase(this.wifiDirect.getConnectionOwnerMacAddress())) {
 					wifiDirectStatus("Connected");
@@ -217,7 +216,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 				}
 				else
 				{
-					DbgLog.error("Wifi Direct - connected to \"" + this.wifiDirect.getConnectionOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
+					RobotLog.e("Wifi Direct - connected to \"" + this.wifiDirect.getConnectionOwnerMacAddress() + "\", expected \"" + this.groupOwnerMac + '\"');
 					wifiDirectStatus("Error: Connected to wrong device");
 					WifiDirectReconfigurer.reconfigureWifi(this);
 					return CallbackResult.HANDLED;
@@ -226,7 +225,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 			case DISCONNECTED:
 				msg = "Disconnected";
 				wifiDirectStatus(msg);
-				DbgLog.msg("Wifi Direct - " + msg);
+				RobotLog.i("Wifi Direct - " + msg);
 				this.wifiDirect.discoverPeers();
 				return CallbackResult.HANDLED;
 			case ERROR:
@@ -236,7 +235,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 					msg = "Error: " + this.wifiDirect.getFailureReason();
 				}
 				wifiDirectStatus(msg);
-				DbgLog.msg("Wifi Direct - " + msg);
+				RobotLog.i("Wifi Direct - " + msg);
 				return CallbackResult.HANDLED;
 		}
 
@@ -258,7 +257,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 				FtcDriverStationWdActivity.this.socket.listenUsingDestination(groupOwnerAddr);
 				FtcDriverStationWdActivity.this.socket.connect(groupOwnerAddr);
 			} catch (SocketException e) {
-				DbgLog.error("Failed to open socket: " + e.toString());
+				RobotLog.ee("DriverStationWd", e, "Failed to open socket");
 			}
 			if (FtcDriverStationWdActivity.this.peerDiscoveryManager != null) {
 				FtcDriverStationWdActivity.this.peerDiscoveryManager.stop();
@@ -266,7 +265,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 			FtcDriverStationWdActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationWdActivity.this.socket, groupOwnerAddr);
 			FtcDriverStationWdActivity.this.recvLoopService = Executors.newSingleThreadExecutor();
 			FtcDriverStationWdActivity.this.recvLoopService.execute(new RecvLoopRunnable());
-			DbgLog.msg("Setup complete");
+			RobotLog.i("Setup complete");
 		}
 	}
 

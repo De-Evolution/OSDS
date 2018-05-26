@@ -39,9 +39,9 @@ import android.util.Patterns;
 import android.view.Menu;
 import android.view.MenuItem;
 
-import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.robocol.PeerDiscoveryManager;
 import com.qualcomm.robotcore.robocol.RobocolDatagramSocket;
+import com.qualcomm.robotcore.util.RobotLog;
 
 import java.net.InetAddress;
 import java.net.SocketException;
@@ -58,7 +58,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 	final static int IP_DIALOG_ID = 1;
 
 	@Override
-	protected Dialog onCreateDialog(int id)
+	protected Dialog onCreateDialog(int id, Bundle bundle)
 	{
 		if(id == IP_DIALOG_ID)
 		{
@@ -67,7 +67,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 			ipDialog.setOnDismissListener(this);
 			return ipDialog;
 		}
-		return super.onCreateDialog(id);
+		return super.onCreateDialog(id, bundle);
 	}
 
 	@Override
@@ -82,7 +82,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 		}
 		catch (UnknownHostException e)
 		{
-			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preferences is not valid!");
+			Log.w("FtcDriverStationLan", "Somehow, the stored IP address preference is not valid!");
 		}
 		displayConnectionNotice();
 	}
@@ -176,7 +176,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 				FtcDriverStationLanActivity.this.socket.connect(robotControllerAddress);
 			}
 			catch (SocketException e) {
-				DbgLog.error("Failed to open socket: " + e.toString());
+				RobotLog.e("Failed to open socket: " + e.toString());
 			}
 
 
@@ -186,7 +186,7 @@ public class FtcDriverStationLanActivity extends FtcDriverStationActivity implem
 			FtcDriverStationLanActivity.this.peerDiscoveryManager = new PeerDiscoveryManager(FtcDriverStationLanActivity.this.socket, robotControllerAddress);
 			FtcDriverStationLanActivity.this.recvLoopService = Executors.newSingleThreadExecutor();
 			FtcDriverStationLanActivity.this.recvLoopService.execute(new RecvLoopRunnable());
-			DbgLog.msg("Setup complete");
+			RobotLog.i("Setup complete");
 		}
 	}
 

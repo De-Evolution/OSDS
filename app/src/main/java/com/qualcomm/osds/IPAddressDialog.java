@@ -23,21 +23,21 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 {
 	public static final String IP_ADDRESS_PREFERENCE = "ip_address";
 
-	EditText ipTextbox;
+	private EditText ipTextbox;
 
-	TextView validText;
-	TextView pingableText;
+	private TextView validText;
+	private TextView pingableText;
 
-	Button okButton;
-	Button cancelButton;
+	private Button okButton;
+	private Button cancelButton;
 
-	InetAddress currentIP;
+	private InetAddress currentIP;
 
-	Thread pingerThread;
+	private Thread pingerThread;
 
 	//need this so that we can use Activity.runOnUiThread()
-	Activity activity;
-	SharedPreferences preferences;
+	private Activity activity;
+	private SharedPreferences preferences;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState)
@@ -194,7 +194,7 @@ public class IPAddressDialog extends Dialog implements TextWatcher, View.OnClick
 		if(v.getId() == okButton.getId())
 		{
 			dismiss();
-			preferences.edit().putString(IP_ADDRESS_PREFERENCE, ipTextbox.getText().toString()).commit();
+			preferences.edit().putString(IP_ADDRESS_PREFERENCE, ipTextbox.getText().toString()).apply();
 		}
 		else if(v.getId() == cancelButton.getId())
 		{

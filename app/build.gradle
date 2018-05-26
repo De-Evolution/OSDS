@@ -20,6 +20,7 @@ android {
     productFlavors {
     }
     buildToolsVersion '27.0.3'
+    
 }
 
 repositories {
@@ -28,8 +29,8 @@ repositories {
     }
 }
 
+
 dependencies {
-    implementation 'com.android.support:support-annotations:23.0.0'
     api project(':FtcCommon')
     api project(':RobotCore')
     api project(':Hardware')

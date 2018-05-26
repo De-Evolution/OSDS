@@ -13,8 +13,8 @@ import android.view.View.OnClickListener;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
-import com.qualcomm.ftccommon.DbgLog;
 import com.qualcomm.robotcore.BuildConfig;
+import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.wifi.NetworkConnection;
 import com.qualcomm.robotcore.wifi.WifiDirectAssistant;
 
@@ -70,7 +70,7 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
 
 	public void onStart() {
 		super.onStart();
-		DbgLog.msg("Starting Pairing with Driver Station activity");
+		RobotLog.i("Starting Pairing with Driver Station activity");
 		this.sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
 		this.driverStationMac = this.sharedPref.getString(getString(R.string.pref_driver_station_mac), getString(R.string.pref_driver_station_mac_default));
 		this.wifiDirect.enable();
@@ -96,8 +96,8 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
 			}
 			Editor editor = this.sharedPref.edit();
 			editor.putString(getString(R.string.pref_driver_station_mac), this.driverStationMac);
-			editor.commit();
-			DbgLog.msg("Setting Driver Station MAC address to " + this.driverStationMac);
+			editor.apply();
+			RobotLog.i("Setting Driver Station MAC address to " + this.driverStationMac);
 		}
 	}
 
@@ -151,7 +151,7 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
 	}
 
 	public Map<String, String> buildMap(List<WifiP2pDevice> peers) {
-		Map<String, String> map = new TreeMap();
+		TreeMap<String, String> map = new TreeMap<>();
 		for (WifiP2pDevice peer : peers) {
 			map.put(peer.deviceName, peer.deviceAddress);
 		}
