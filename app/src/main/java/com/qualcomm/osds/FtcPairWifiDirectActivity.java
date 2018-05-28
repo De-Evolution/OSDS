@@ -8,6 +8,7 @@ import android.net.wifi.p2p.WifiP2pDevice;
 import android.os.Bundle;
 import android.os.Handler;
 import android.preference.PreferenceManager;
+import android.util.Log;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.RadioButton;
@@ -154,6 +155,7 @@ public class FtcPairWifiDirectActivity extends Activity implements OnClickListen
 		TreeMap<String, String> map = new TreeMap<>();
 		for (WifiP2pDevice peer : peers) {
 			map.put(peer.deviceName, peer.deviceAddress);
+			Log.d("PairWifiDirect", "Peer: " + peer.deviceName);
 		}
 		return map;
 	}

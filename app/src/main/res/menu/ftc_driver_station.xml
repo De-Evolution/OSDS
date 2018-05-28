@@ -11,11 +11,6 @@
         android:showAsAction="never"
         android:title="@string/action_restart_robot"/>
     <item
-        android:id="@+id/action_pair_with_robot"
-        android:orderInCategory="103"
-        android:showAsAction="never"
-        android:title="@string/pair_with_controller"/>
-    <item
         android:id="@+id/action_about"
         android:orderInCategory="999"
         android:icon="@android:drawable/ic_menu_info_details"

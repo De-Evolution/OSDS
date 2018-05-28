@@ -49,6 +49,7 @@
     <string name="label_rc_battery">controller battery:</string>
     <string name="label_robot_battery">robot battery:</string>
     <string name="label_unknown_RC_battery">-- %</string>
+    <string name="label_RC_battery_charging">⚡</string>
     <string name="label_unknown_robot_battery">--- V</string>
     <string name="label_loading_op_mode">Loading…</string>
     <string name="label_start">Start</string>

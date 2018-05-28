@@ -4,7 +4,7 @@ This app is an open-source version of the FTC 2015-16 Driver Station app in the 
 
 
 ### Code Ownership
-The GUI source code in this was written by Qualcomm and modified by me.  It is still their property.  The `FtcCommon` and `RobotCore` libraries are both taken in their compiled form from the ftc_sdk project.
+The GUI source code in this was written by Qualcomm and modified by me.  It is still their property.  Other libraries are from Qualcomm's open source FTC code, and from the OpenRC project.
 
 ### Pros & Cons
 #### Why you WOULD use this driver station

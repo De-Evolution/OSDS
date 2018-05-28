@@ -74,6 +74,7 @@ import com.qualcomm.robotcore.robocol.RobocolDatagram;
 import com.qualcomm.robotcore.robocol.RobocolDatagramSocket;
 import com.qualcomm.robotcore.robocol.TelemetryMessage;
 import com.qualcomm.robotcore.robot.RobotState;
+import com.qualcomm.robotcore.util.BatteryChecker;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.RobotLog;
 import com.qualcomm.robotcore.util.RollingAverage;
@@ -606,22 +607,26 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 			setTextView(textTelemetry, "Robot is hosed. To recover, please restart it. Error: " + errorMsg);
 			uiRobotNeedsRestart();
 		}
-		if(tag.equals(EventLoopManager.SYSTEM_WARNING_KEY))
+		else if(tag.equals(EventLoopManager.SYSTEM_WARNING_KEY))
 		{
 			String warnMsg = message.getDataStrings().get(message.getTag());
 			RobotLog.e("System Warning Telemetry: " + warnMsg);
 			setTextView(textWifiDirectStatus, "Robot warning: " + warnMsg);
 		}
-		if(tag.equals(EventLoopManager.SYSTEM_NONE_KEY))
+		else if(tag.equals(EventLoopManager.SYSTEM_NONE_KEY))
 		{
 			//print nothing
 			setTextView(textTelemetry, "");
 		}
 		else if(tag.equals(EventLoopManager.RC_BATTERY_STATUS_KEY))
 		{
-			String percent = message.getDataStrings().get(message.getTag());
-			RobotLog.i("RC battery Telemetry event: " + percent);
-			setTextView(textRCBatteryPercent, percent + "%");
+			String statusString = message.getDataStrings().get(message.getTag());
+			RobotLog.i("RC battery Telemetry event: " + statusString);
+
+			BatteryChecker.BatteryStatus battStatus = BatteryChecker.BatteryStatus.deserialize(statusString);
+
+			setTextView(textRCBatteryPercent, String.format(Locale.getDefault(), "%2.00f%%", battStatus.percent)
+							+ (battStatus.isCharging ? getString(R.string.label_RC_battery_charging) : ""));
 		}
 		else if(tag.equals(EventLoopManager.ROBOT_BATTERY_LEVEL_KEY))
 		{
@@ -706,7 +711,7 @@ public abstract class FtcDriverStationActivity extends Activity implements Share
 
 	protected void uiWaitingForInitEvent()
 	{
-		if(queuedOpMode.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
+		if(queuedOpMode.name.equals(OpModeManager.DEFAULT_OP_MODE_NAME))
 		{
 			setEnabled(this.buttonInit, false);
 		} else

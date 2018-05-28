@@ -54,9 +54,6 @@ import java.util.concurrent.Executors;
  */
 public class FtcDriverStationWdActivity extends FtcDriverStationActivity implements NetworkConnection.NetworkConnectionCallback{
 
-	protected boolean clientConnected = false;
-
-	protected InetAddress remoteAddr;
 	protected WifiDirectAssistant wifiDirect;
 	protected String groupOwnerMac;
 
@@ -150,7 +147,7 @@ public class FtcDriverStationWdActivity extends FtcDriverStationActivity impleme
 			case R.id.action_switch_to_lan:
 				//set the default to LAN
 				preferences.edit().putBoolean(PREF_USE_LAN_DS, true).apply();
-				startActivity(new Intent(getBaseContext(), FtcDriverStationLanActivity.class));
+				startActivityForResult(new Intent(getBaseContext(), FtcDriverStationLanActivity.class), AUTO_LAN_DS_REQUEST_CODE);
 				return true;
 			//from common menu
 			default:
